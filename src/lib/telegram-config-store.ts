@@ -7,7 +7,7 @@ export type TelegramConfig = {
   updatedAt: number;
 };
 
-const FILE_PATH = path.join(process.cwd(), 'data', 'telegram-config.json');
+const FILE_PATH = path.join(process.cwd(), 'src', 'data', 'telegram-config.json');
 
 function safeParse(raw: string): TelegramConfig | null {
   try {

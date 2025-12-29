@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 
-const LOG_PATH = path.join(process.cwd(), 'data', 'delta-api.log');
+const LOG_PATH = path.join(process.cwd(), 'src', 'data', 'delta-api.log');
 
 function safeJson(obj: unknown) {
   try {

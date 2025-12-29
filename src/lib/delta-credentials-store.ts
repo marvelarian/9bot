@@ -8,7 +8,7 @@ export type StoredDeltaCredentials = {
   updatedAt: number;
 };
 
-const FILE_PATH = path.join(process.cwd(), 'data', 'delta-credentials.json');
+const FILE_PATH = path.join(process.cwd(), 'src', 'data', 'delta-credentials.json');
 
 export type DeltaExchangeId = 'delta_india' | 'delta_global';
 

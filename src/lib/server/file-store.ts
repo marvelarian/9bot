@@ -43,7 +43,7 @@ function dataRoot() {
   if (isServerless) return path.join('/tmp', '9bot-data');
 
   // Local/dev/server with writable workspace.
-  return path.join(process.cwd(), 'data');
+  return path.join(process.cwd(), 'src', 'data');
 }
 
 function dataPath(...parts: string[]) {
