@@ -71,7 +71,9 @@ export async function getAuthedEmailFromRequestCookie(): Promise<string | null> 
   const secret = authSecret();
   if (secret) {
     const email = verifySignedSessionToken(token, secret);
-    if (email) return email;
+    // IMPORTANT: when AUTH_SECRET is configured, do NOT fall back to file-based sessions.
+    // On serverless this would be inconsistent across instances (/tmp is per-instance) and can cause random logouts.
+    return email;
   }
 
   const s = await getSession(token);
