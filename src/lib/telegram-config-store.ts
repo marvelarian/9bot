@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { resolveDataPath } from '@/lib/server/file-store';
 
 export type TelegramConfig = {
   botToken: string;
@@ -7,7 +8,7 @@ export type TelegramConfig = {
   updatedAt: number;
 };
 
-const FILE_PATH = path.join(process.cwd(), 'src', 'data', 'telegram-config.json');
+const FILE_PATH = resolveDataPath('telegram-config.json');
 
 function safeParse(raw: string): TelegramConfig | null {
   try {
@@ -38,6 +39,7 @@ export async function writeTelegramConfig(input: { botToken: string; chatId: str
     chatId: input.chatId.trim(),
     updatedAt: Date.now(),
   };
+  // Ensure directory exists (resolveDataPath may point to /tmp on serverless).
   await fs.mkdir(path.dirname(FILE_PATH), { recursive: true });
   await fs.writeFile(FILE_PATH, JSON.stringify(data, null, 2), 'utf8');
   return data;

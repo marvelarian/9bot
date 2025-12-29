@@ -27,7 +27,7 @@ async function withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
   }
 }
 
-function dataRoot() {
+export function getDataRoot() {
   // Allow overriding storage location (recommended in production).
   // Example: DATA_DIR=/var/lib/9bot/data (VM) or a mounted volume path (Docker).
   const explicit = process.env.DATA_DIR;
@@ -46,17 +46,17 @@ function dataRoot() {
   return path.join(process.cwd(), 'src', 'data');
 }
 
-function dataPath(...parts: string[]) {
-  return path.join(dataRoot(), ...parts);
+export function resolveDataPath(...parts: string[]) {
+  return path.join(getDataRoot(), ...parts);
 }
 
 async function ensureDataDir() {
-  await fs.mkdir(dataRoot(), { recursive: true });
+  await fs.mkdir(getDataRoot(), { recursive: true });
 }
 
 export async function readJsonFile<T>(fileName: string, fallback: T): Promise<T> {
   await ensureDataDir();
-  const full = dataPath(fileName);
+  const full = resolveDataPath(fileName);
   return withLock(full, async () => {
     try {
       const raw = await fs.readFile(full, 'utf8');
@@ -69,7 +69,7 @@ export async function readJsonFile<T>(fileName: string, fallback: T): Promise<T>
 
 export async function writeJsonFile<T>(fileName: string, value: T): Promise<void> {
   await ensureDataDir();
-  const full = dataPath(fileName);
+  const full = resolveDataPath(fileName);
   return withLock(full, async () => {
     const tmp = `${full}.${process.pid}.${Date.now()}.tmp`;
     const payload = JSON.stringify(value, null, 2);

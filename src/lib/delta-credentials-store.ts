@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { resolveDataPath } from '@/lib/server/file-store';
 
 export type StoredDeltaCredentials = {
   baseUrl?: string; // e.g. https://api.delta.exchange or India domain
@@ -8,7 +9,7 @@ export type StoredDeltaCredentials = {
   updatedAt: number;
 };
 
-const FILE_PATH = path.join(process.cwd(), 'src', 'data', 'delta-credentials.json');
+const FILE_PATH = resolveDataPath('delta-credentials.json');
 
 export type DeltaExchangeId = 'delta_india' | 'delta_global';
 
