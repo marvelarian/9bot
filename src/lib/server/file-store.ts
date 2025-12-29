@@ -27,12 +27,31 @@ async function withLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
   }
 }
 
+function dataRoot() {
+  // Allow overriding storage location (recommended in production).
+  // Example: DATA_DIR=/var/lib/9bot/data (VM) or a mounted volume path (Docker).
+  const explicit = process.env.DATA_DIR;
+  if (explicit && explicit.trim()) return explicit.trim();
+
+  // Vercel/AWS serverless filesystem: project directory is read-only (/var/task).
+  // Only /tmp is writable, but it is EPHEMERAL (not durable across cold starts/deploys).
+  // If you need persistence on Vercel, move this store to a real DB/KV.
+  const isServerless =
+    Boolean(process.env.VERCEL) ||
+    Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME) ||
+    Boolean(process.env.LAMBDA_TASK_ROOT);
+  if (isServerless) return path.join('/tmp', '9bot-data');
+
+  // Local/dev/server with writable workspace.
+  return path.join(process.cwd(), 'data');
+}
+
 function dataPath(...parts: string[]) {
-  return path.join(process.cwd(), 'data', ...parts);
+  return path.join(dataRoot(), ...parts);
 }
 
 async function ensureDataDir() {
-  await fs.mkdir(dataPath(), { recursive: true });
+  await fs.mkdir(dataRoot(), { recursive: true });
 }
 
 export async function readJsonFile<T>(fileName: string, fallback: T): Promise<T> {
