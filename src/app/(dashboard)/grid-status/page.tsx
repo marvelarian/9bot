@@ -546,7 +546,9 @@ export default function GridStatusPage() {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-slate-500">Last crossed</span>
-                        <span className="font-semibold text-slate-900">{selectedLevel.lastCrossed || '—'}</span>
+                        <span className="font-semibold text-slate-900">
+                          {('lastCrossed' in selectedLevel ? selectedLevel.lastCrossed : undefined) || '—'}
+                        </span>
                       </div>
                     </div>
                   ) : (

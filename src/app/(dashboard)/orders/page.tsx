@@ -129,7 +129,7 @@ export default function OrdersPage() {
         const mapped: UiOrderRow[] = orders.map((o: any) => ({
           id: String(o?.id || '—'),
           symbol: String(o?.symbol || '—'),
-          side: (String(o?.side || '').toLowerCase() === 'buy' || String(o?.side || '').toLowerCase() === 'sell') ? String(o.side).toLowerCase() : '—',
+          side: pickSide(o),
           type: String(o?.order_type || 'market'),
           status: String(o?.status || 'filled'),
           error: o?.error ? String(o.error) : undefined,

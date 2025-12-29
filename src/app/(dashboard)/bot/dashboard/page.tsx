@@ -458,12 +458,14 @@ export default function BotDashboardPage() {
     });
 
     // cleanup any streams for deleted bots
-    for (const [id, es] of streamsRef.current.entries()) {
+    const staleIds: string[] = [];
+    streamsRef.current.forEach((es, id) => {
       if (!bots.some((b) => b.id === id)) {
         es.close();
-        streamsRef.current.delete(id);
+        staleIds.push(id);
       }
-    }
+    });
+    for (const id of staleIds) streamsRef.current.delete(id);
   }, [bots]);
 
   const totalEquity = useMemo(() => {

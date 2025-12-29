@@ -24,7 +24,7 @@ export function ensureIPv4Preferred() {
   // This is stronger than dns order (avoids "happy eyeballs" choosing IPv6).
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const undici = require('undici') as typeof import('undici');
+    const undici: any = require('undici');
     if (undici?.Agent && undici?.setGlobalDispatcher) {
       undici.setGlobalDispatcher(
         new undici.Agent({

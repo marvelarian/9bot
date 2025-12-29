@@ -140,14 +140,16 @@ export default function DashboardHomePage() {
 
     return () => {
       // Clean up bot:* streams that are no longer needed
-      for (const [key, es] of streamsRef.current.entries()) {
-        if (!key.startsWith('bot:')) continue;
+      const staleKeys: string[] = [];
+      streamsRef.current.forEach((es, key) => {
+        if (!key.startsWith('bot:')) return;
         const id = key.slice('bot:'.length); // ex:sym
         if (!keys.includes(id)) {
           es.close();
-          streamsRef.current.delete(key);
+          staleKeys.push(key);
         }
-      }
+      });
+      for (const key of staleKeys) streamsRef.current.delete(key);
     };
   }, [bots]);
 
@@ -183,7 +185,7 @@ export default function DashboardHomePage() {
 
   useEffect(() => {
     return () => {
-      for (const es of streamsRef.current.values()) es.close();
+      streamsRef.current.forEach((es) => es.close());
       streamsRef.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

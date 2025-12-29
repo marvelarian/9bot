@@ -225,11 +225,13 @@ export function BotRuntimeRunner() {
       const keepIds = new Set(records.map((b) => b.id));
 
       // Stop engines for deleted bots
-      for (const [id, entry] of enginesRef.current.entries()) {
-        if (!keepIds.has(id)) {
-          await stopEntry(id, entry);
-          enginesRef.current.delete(id);
-        }
+      const stale: Array<[string, EngineEntry]> = [];
+      enginesRef.current.forEach((entry, id) => {
+        if (!keepIds.has(id)) stale.push([id, entry]);
+      });
+      for (const [id, entry] of stale) {
+        await stopEntry(id, entry);
+        enginesRef.current.delete(id);
       }
 
       // Start/stop per current store
@@ -288,7 +290,8 @@ export function BotRuntimeRunner() {
                   leverage: Number(pos.leverage || (rec.config as any).leverage || 1),
                   timestampMs: pos.timestamp instanceof Date ? pos.timestamp.getTime() : Date.now(),
                 }));
-                const paperStats = entry.engine.getPaperTradeStats();
+                const paperStatsRaw = entry.engine.getPaperTradeStats();
+                const paperStats = { ...paperStatsRaw, winRate: paperStatsRaw.winRate ?? undefined };
                 void updateBot(rec.id, {
                   runtime: {
                     lastPrice: p,
@@ -338,7 +341,7 @@ export function BotRuntimeRunner() {
       if (summaryTimerRef.current) clearInterval(summaryTimerRef.current);
       summaryTimerRef.current = null;
       // Best-effort cleanup
-      for (const [id, entry] of enginesRef.current.entries()) {
+      enginesRef.current.forEach((entry) => {
         try {
           entry.stream?.close();
         } catch {}
@@ -346,8 +349,8 @@ export function BotRuntimeRunner() {
         try {
           void entry.engine.stop();
         } catch {}
-        enginesRef.current.delete(id);
-      }
+      });
+      enginesRef.current.clear();
     };
   }, []);
 

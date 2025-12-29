@@ -53,7 +53,7 @@ function pickFee(f: any): number | undefined {
 }
 
 function downloadCsv(filename: string, rows: string[][]) {
-  const escape = (s: string) => `"${String(s).replaceAll('"', '""')}"`;
+  const escape = (s: string) => `"${String(s).replace(/"/g, '""')}"`;
   const csv = rows.map((r) => r.map(escape).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);

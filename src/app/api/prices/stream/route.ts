@@ -98,7 +98,6 @@ export async function GET(req: Request) {
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       // Stop streaming when client disconnects
-      // @ts-expect-error: Request has signal in runtime
       req.signal?.addEventListener?.('abort', () => closeStream(controller));
 
       safeEnqueue(
