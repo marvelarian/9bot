@@ -1,0 +1,2367 @@
+{
+  "bots": [
+    {
+      "id": "bot_mjpy5awl_miwi4w",
+      "ownerEmail": "deathailc@gmail.com",
+      "name": "HANAUSD Grid",
+      "config": {
+        "exchange": "delta_india",
+        "execution": "paper",
+        "symbol": "HANAUSD",
+        "lowerRange": 0.01,
+        "upperRange": 0.02,
+        "numberOfGrids": 50,
+        "mode": "neutral",
+        "quantity": 1,
+        "leverage": 5,
+        "maxPositions": 5,
+        "maxConsecutiveLoss": 3,
+        "circuitBreaker": 1000,
+        "gridSpacing": 0.00020408163265306123
+      },
+      "isRunning": true,
+      "createdAt": 1766939483254,
+      "updatedAt": 1767023930419,
+      "runtime": {
+        "startedAt": 1766939542916,
+        "startedEquity": 0.95,
+        "startedCurrency": "INR",
+        "lastPrice": 0.01160573,
+        "updatedAt": 1767023925873,
+        "startedPrice": 0.01140769,
+        "paperStartedPrice": 0.01140769,
+        "positions": [
+          {
+            "symbol": "HANAUSD",
+            "side": "sell",
+            "quantity": 1,
+            "entryPrice": 0.01171311,
+            "orderId": "mock-1767023053227",
+            "leverage": 5,
+            "timestampMs": 1767023053228
+          }
+        ],
+        "orders": [
+          {
+            "id": "mock-1767023053227",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HANAUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 0.01171311,
+            "triggerLevelPrice": 0.01163265,
+            "triggerDirection": "above",
+            "prevPrice": 0.01112149,
+            "currentPrice": 0.01171311,
+            "createdAtMs": 1767023053227,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766943319256",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HANAUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 1,
+            "price": 0.01122064,
+            "triggerLevelPrice": 0.01122449,
+            "triggerDirection": "below",
+            "prevPrice": 0.01134069,
+            "currentPrice": 0.01122064,
+            "createdAtMs": 1766943319256,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766939614943",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HANAUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 0.01142961,
+            "triggerLevelPrice": 0.01142857,
+            "triggerDirection": "above",
+            "prevPrice": 0.0114269,
+            "currentPrice": 0.01142961,
+            "createdAtMs": 1766939614943,
+            "status": "filled"
+          }
+        ],
+        "paperStats": {
+          "closedTrades": 1,
+          "profitTrades": 1,
+          "lossTrades": 0,
+          "winRate": 1,
+          "realizedPnl": 0.0002089699999999993
+        },
+        "levels": [
+          {
+            "id": "grid-0",
+            "price": 0.01,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-1",
+            "price": 0.01020408,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-2",
+            "price": 0.01040816,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-3",
+            "price": 0.01061224,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-4",
+            "price": 0.01081633,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-5",
+            "price": 0.01102041,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-6",
+            "price": 0.01122449,
+            "isActive": true,
+            "lastCrossed": "below",
+            "tradeCount": 1
+          },
+          {
+            "id": "grid-7",
+            "price": 0.01142857,
+            "isActive": true,
+            "lastCrossed": "above",
+            "tradeCount": 1
+          },
+          {
+            "id": "grid-8",
+            "price": 0.01163265,
+            "isActive": false,
+            "lastCrossed": "above",
+            "tradeCount": 1
+          },
+          {
+            "id": "grid-9",
+            "price": 0.01183673,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-10",
+            "price": 0.01204082,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-11",
+            "price": 0.0122449,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-12",
+            "price": 0.01244898,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-13",
+            "price": 0.01265306,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-14",
+            "price": 0.01285714,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-15",
+            "price": 0.01306122,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-16",
+            "price": 0.01326531,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-17",
+            "price": 0.01346939,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-18",
+            "price": 0.01367347,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-19",
+            "price": 0.01387755,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-20",
+            "price": 0.01408163,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-21",
+            "price": 0.01428571,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-22",
+            "price": 0.0144898,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-23",
+            "price": 0.01469388,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-24",
+            "price": 0.01489796,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-25",
+            "price": 0.01510204,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-26",
+            "price": 0.01530612,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-27",
+            "price": 0.0155102,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-28",
+            "price": 0.01571429,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-29",
+            "price": 0.01591837,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-30",
+            "price": 0.01612245,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-31",
+            "price": 0.01632653,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-32",
+            "price": 0.01653061,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-33",
+            "price": 0.01673469,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-34",
+            "price": 0.01693878,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-35",
+            "price": 0.01714286,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-36",
+            "price": 0.01734694,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-37",
+            "price": 0.01755102,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-38",
+            "price": 0.0177551,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-39",
+            "price": 0.01795918,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-40",
+            "price": 0.01816327,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-41",
+            "price": 0.01836735,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-42",
+            "price": 0.01857143,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-43",
+            "price": 0.01877551,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-44",
+            "price": 0.01897959,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-45",
+            "price": 0.01918367,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-46",
+            "price": 0.01938776,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-47",
+            "price": 0.01959184,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-48",
+            "price": 0.01979592,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-49",
+            "price": 0.02,
+            "isActive": true,
+            "tradeCount": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "bot_mjpu7g45_23pvpl",
+      "ownerEmail": "deathailc@gmail.com",
+      "name": "ETHUSD Grid",
+      "config": {
+        "exchange": "delta_india",
+        "execution": "live",
+        "symbol": "ETHUSD",
+        "lowerRange": 2500,
+        "upperRange": 3100,
+        "numberOfGrids": 50,
+        "mode": "short",
+        "quantity": 1,
+        "leverage": 3,
+        "maxPositions": 5,
+        "maxConsecutiveLoss": 3,
+        "circuitBreaker": 100,
+        "gridSpacing": 12.244897959183673
+      },
+      "isRunning": true,
+      "createdAt": 1766932864853,
+      "updatedAt": 1767023930572,
+      "runtime": {
+        "startedAt": 1766939081252,
+        "startedEquity": 0.95,
+        "startedCurrency": "INR",
+        "lastPrice": 2936.62900776,
+        "updatedAt": 1767023926008,
+        "startedPrice": 2947.3,
+        "positions": [],
+        "orders": [
+          {
+            "id": "rejected-1767023267921",
+            "exchange": "delta_india",
+            "execution": "live",
+            "symbol": "ETHUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 2943.81909398,
+            "triggerLevelPrice": 2940.81632653,
+            "triggerDirection": "above",
+            "prevPrice": 2939.27400305,
+            "currentPrice": 2943.81909398,
+            "createdAtMs": 1767023267921,
+            "status": "rejected",
+            "error": "Delta API error: insufficient_margin"
+          },
+          {
+            "id": "rejected-1767023140089",
+            "exchange": "delta_india",
+            "execution": "live",
+            "symbol": "ETHUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 2940.98009832,
+            "triggerLevelPrice": 2940.81632653,
+            "triggerDirection": "above",
+            "prevPrice": 2939.86123442,
+            "currentPrice": 2940.98009832,
+            "createdAtMs": 1767023140089,
+            "status": "rejected",
+            "error": "Delta API error: insufficient_margin"
+          },
+          {
+            "id": "rejected-1767023125825",
+            "exchange": "delta_india",
+            "execution": "live",
+            "symbol": "ETHUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 2941.0617439,
+            "triggerLevelPrice": 2940.81632653,
+            "triggerDirection": "above",
+            "prevPrice": 2940.55459607,
+            "currentPrice": 2941.0617439,
+            "createdAtMs": 1767023125825,
+            "status": "rejected",
+            "error": "Delta API error: insufficient_margin"
+          },
+          {
+            "id": "rejected-1766939437902",
+            "exchange": "delta_india",
+            "execution": "live",
+            "symbol": "ETHUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 2941.22808856,
+            "triggerLevelPrice": 2940.81632653,
+            "triggerDirection": "above",
+            "prevPrice": 2940.53678087,
+            "currentPrice": 2941.22808856,
+            "createdAtMs": 1766939437902,
+            "status": "rejected",
+            "error": "Delta API error: insufficient_margin"
+          },
+          {
+            "id": "rejected-1766939333227",
+            "exchange": "delta_india",
+            "execution": "live",
+            "symbol": "ETHUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 2941.52798508,
+            "triggerLevelPrice": 2940.81632653,
+            "triggerDirection": "above",
+            "prevPrice": 2940.2360363,
+            "currentPrice": 2941.52798508,
+            "createdAtMs": 1766939333227,
+            "status": "rejected",
+            "error": "Delta API error: insufficient_margin"
+          }
+        ],
+        "levels": [
+          {
+            "id": "grid-0",
+            "price": 2500,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-1",
+            "price": 2512.24489796,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-2",
+            "price": 2524.48979592,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-3",
+            "price": 2536.73469388,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-4",
+            "price": 2548.97959184,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-5",
+            "price": 2561.2244898,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-6",
+            "price": 2573.46938776,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-7",
+            "price": 2585.71428571,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-8",
+            "price": 2597.95918367,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-9",
+            "price": 2610.20408163,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-10",
+            "price": 2622.44897959,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-11",
+            "price": 2634.69387755,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-12",
+            "price": 2646.93877551,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-13",
+            "price": 2659.18367347,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-14",
+            "price": 2671.42857143,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-15",
+            "price": 2683.67346939,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-16",
+            "price": 2695.91836735,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-17",
+            "price": 2708.16326531,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-18",
+            "price": 2720.40816327,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-19",
+            "price": 2732.65306122,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-20",
+            "price": 2744.89795918,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-21",
+            "price": 2757.14285714,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-22",
+            "price": 2769.3877551,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-23",
+            "price": 2781.63265306,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-24",
+            "price": 2793.87755102,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-25",
+            "price": 2806.12244898,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-26",
+            "price": 2818.36734694,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-27",
+            "price": 2830.6122449,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-28",
+            "price": 2842.85714286,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-29",
+            "price": 2855.10204082,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-30",
+            "price": 2867.34693878,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-31",
+            "price": 2879.59183673,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-32",
+            "price": 2891.83673469,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-33",
+            "price": 2904.08163265,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-34",
+            "price": 2916.32653061,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-35",
+            "price": 2928.57142857,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-36",
+            "price": 2940.81632653,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-37",
+            "price": 2953.06122449,
+            "isActive": false,
+            "lastCrossed": "above",
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-38",
+            "price": 2965.30612245,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-39",
+            "price": 2977.55102041,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-40",
+            "price": 2989.79591837,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-41",
+            "price": 3002.04081633,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-42",
+            "price": 3014.28571429,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-43",
+            "price": 3026.53061224,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-44",
+            "price": 3038.7755102,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-45",
+            "price": 3051.02040816,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-46",
+            "price": 3063.26530612,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-47",
+            "price": 3075.51020408,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-48",
+            "price": 3087.75510204,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-49",
+            "price": 3100,
+            "isActive": true,
+            "tradeCount": 0
+          }
+        ],
+        "paperStats": {
+          "closedTrades": 0,
+          "profitTrades": 0,
+          "lossTrades": 0,
+          "winRate": null,
+          "realizedPnl": 0
+        }
+      }
+    },
+    {
+      "id": "bot_mjprugtc_ad9qo1",
+      "ownerEmail": "admin@gmail.com",
+      "name": "HANAUSD Grid",
+      "config": {
+        "exchange": "delta_india",
+        "execution": "paper",
+        "symbol": "HANAUSD",
+        "lowerRange": 0.01,
+        "upperRange": 0.012,
+        "numberOfGrids": 50,
+        "mode": "short",
+        "quantity": 1,
+        "leverage": 3,
+        "maxPositions": 6,
+        "maxConsecutiveLoss": 6,
+        "circuitBreaker": 1000,
+        "gridSpacing": 0.000040816326530612245
+      },
+      "isRunning": true,
+      "createdAt": 1766928900000,
+      "updatedAt": 1766928942259,
+      "runtime": {
+        "startedAt": 1766928919848,
+        "startedEquity": 0.95,
+        "startedCurrency": "INR",
+        "lastPrice": 0.01113,
+        "updatedAt": 1766928941843,
+        "startedPrice": 0.01113,
+        "paperStartedPrice": 0.01113,
+        "positions": [],
+        "orders": [],
+        "levels": [
+          {
+            "id": "grid-0",
+            "price": 0.01,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-1",
+            "price": 0.01004082,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-2",
+            "price": 0.01008163,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-3",
+            "price": 0.01012245,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-4",
+            "price": 0.01016327,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-5",
+            "price": 0.01020408,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-6",
+            "price": 0.0102449,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-7",
+            "price": 0.01028571,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-8",
+            "price": 0.01032653,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-9",
+            "price": 0.01036735,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-10",
+            "price": 0.01040816,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-11",
+            "price": 0.01044898,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-12",
+            "price": 0.0104898,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-13",
+            "price": 0.01053061,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-14",
+            "price": 0.01057143,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-15",
+            "price": 0.01061224,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-16",
+            "price": 0.01065306,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-17",
+            "price": 0.01069388,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-18",
+            "price": 0.01073469,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-19",
+            "price": 0.01077551,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-20",
+            "price": 0.01081633,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-21",
+            "price": 0.01085714,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-22",
+            "price": 0.01089796,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-23",
+            "price": 0.01093878,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-24",
+            "price": 0.01097959,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-25",
+            "price": 0.01102041,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-26",
+            "price": 0.01106122,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-27",
+            "price": 0.01110204,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-28",
+            "price": 0.01114286,
+            "isActive": false,
+            "lastCrossed": "below",
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-29",
+            "price": 0.01118367,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-30",
+            "price": 0.01122449,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-31",
+            "price": 0.01126531,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-32",
+            "price": 0.01130612,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-33",
+            "price": 0.01134694,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-34",
+            "price": 0.01138776,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-35",
+            "price": 0.01142857,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-36",
+            "price": 0.01146939,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-37",
+            "price": 0.0115102,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-38",
+            "price": 0.01155102,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-39",
+            "price": 0.01159184,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-40",
+            "price": 0.01163265,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-41",
+            "price": 0.01167347,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-42",
+            "price": 0.01171429,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-43",
+            "price": 0.0117551,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-44",
+            "price": 0.01179592,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-45",
+            "price": 0.01183673,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-46",
+            "price": 0.01187755,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-47",
+            "price": 0.01191837,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-48",
+            "price": 0.01195918,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-49",
+            "price": 0.012,
+            "isActive": true,
+            "tradeCount": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "bot_mjpnhhdx_2xgr5c",
+      "ownerEmail": "deathailc@gmail.com",
+      "name": "HIVEUSD Grid",
+      "config": {
+        "exchange": "delta_india",
+        "execution": "paper",
+        "symbol": "HIVEUSD",
+        "lowerRange": 0.095,
+        "upperRange": 0.13,
+        "numberOfGrids": 25,
+        "mode": "long",
+        "quantity": 10,
+        "leverage": 5,
+        "maxPositions": 5,
+        "maxConsecutiveLoss": 3,
+        "circuitBreaker": 1000,
+        "gridSpacing": 0.0014583333333333334
+      },
+      "isRunning": true,
+      "createdAt": 1766921575749,
+      "updatedAt": 1767024738591,
+      "runtime": {
+        "startedAt": 1766939086045,
+        "startedEquity": 0.95,
+        "startedCurrency": "INR",
+        "lastPrice": 0.10214625,
+        "updatedAt": 1767024736459,
+        "levels": [
+          {
+            "id": "grid-0",
+            "price": 0.095,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-1",
+            "price": 0.09645833,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-2",
+            "price": 0.09791667,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-3",
+            "price": 0.099375,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-4",
+            "price": 0.10083333,
+            "isActive": true,
+            "lastCrossed": "below",
+            "tradeCount": 1
+          },
+          {
+            "id": "grid-5",
+            "price": 0.10229167,
+            "isActive": false,
+            "lastCrossed": "above",
+            "tradeCount": 2
+          },
+          {
+            "id": "grid-6",
+            "price": 0.10375,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-7",
+            "price": 0.10520833,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-8",
+            "price": 0.10666667,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-9",
+            "price": 0.108125,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-10",
+            "price": 0.10958333,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-11",
+            "price": 0.11104167,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-12",
+            "price": 0.1125,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-13",
+            "price": 0.11395833,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-14",
+            "price": 0.11541667,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-15",
+            "price": 0.116875,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-16",
+            "price": 0.11833333,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-17",
+            "price": 0.11979167,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-18",
+            "price": 0.12125,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-19",
+            "price": 0.12270833,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-20",
+            "price": 0.12416667,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-21",
+            "price": 0.125625,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-22",
+            "price": 0.12708333,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-23",
+            "price": 0.12854167,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-24",
+            "price": 0.13,
+            "isActive": true,
+            "tradeCount": 0
+          }
+        ],
+        "paperStartedPrice": 0.10354,
+        "startedPrice": 0.1033,
+        "positions": [],
+        "orders": [
+          {
+            "id": "mock-1766938792973",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HIVEUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 10,
+            "price": 0.10231539,
+            "triggerLevelPrice": 0.10229167,
+            "triggerDirection": "above",
+            "prevPrice": 0.10221816,
+            "currentPrice": 0.10231539,
+            "createdAtMs": 1766938792973,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766936554014",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HIVEUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 10,
+            "price": 0.10081419,
+            "triggerLevelPrice": 0.10083333,
+            "triggerDirection": "below",
+            "prevPrice": 0.10097686,
+            "currentPrice": 0.10081419,
+            "createdAtMs": 1766936554014,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766932213689",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HIVEUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 50,
+            "price": 0.10223,
+            "triggerLevelPrice": 0.10229167,
+            "triggerDirection": "below",
+            "prevPrice": 0.1023,
+            "currentPrice": 0.10223,
+            "createdAtMs": 1766932213689,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766929054859",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HIVEUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 50,
+            "price": 0.10228,
+            "triggerLevelPrice": 0.10229167,
+            "triggerDirection": "below",
+            "prevPrice": 0.1023,
+            "currentPrice": 0.10228,
+            "createdAtMs": 1766929054859,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766925964713",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HIVEUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 50,
+            "price": 0.10228,
+            "createdAtMs": 1766925964713,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766925708610",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HIVEUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 50,
+            "price": 0.10217,
+            "createdAtMs": 1766925708610,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766925602976",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HIVEUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 50,
+            "price": 0.10212,
+            "createdAtMs": 1766925602976,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766925486215",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HIVEUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 50,
+            "price": 0.10221,
+            "createdAtMs": 1766925486215,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766925064876",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HIVEUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 50,
+            "price": 0.10229,
+            "createdAtMs": 1766925064876,
+            "status": "filled"
+          }
+        ],
+        "paperStats": {
+          "closedTrades": 1,
+          "profitTrades": 1,
+          "lossTrades": 0,
+          "winRate": 1,
+          "realizedPnl": 0.0042695000000002314
+        }
+      }
+    },
+    {
+      "id": "bot_mjpmuv72_42me5a",
+      "ownerEmail": "deathailc@gmail.com",
+      "name": "BTCUSD Grid",
+      "config": {
+        "exchange": "delta_india",
+        "execution": "paper",
+        "symbol": "BTCUSD",
+        "lowerRange": 87000,
+        "upperRange": 90999.99,
+        "numberOfGrids": 50,
+        "mode": "long",
+        "quantity": 1,
+        "leverage": 30,
+        "maxPositions": 5,
+        "maxConsecutiveLoss": 6,
+        "circuitBreaker": 600,
+        "gridSpacing": 81.63244897959194
+      },
+      "isRunning": true,
+      "createdAt": 1766920520558,
+      "updatedAt": 1767023929052,
+      "runtime": {
+        "startedAt": 1766939088487,
+        "startedEquity": 0.95,
+        "startedCurrency": "INR",
+        "lastPrice": 87698.97504976,
+        "updatedAt": 1767023924739,
+        "levels": [
+          {
+            "id": "grid-0",
+            "price": 87000,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-1",
+            "price": 87081.63244898,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-2",
+            "price": 87163.26489796,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-3",
+            "price": 87244.89734694,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-4",
+            "price": 87326.52979592,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-5",
+            "price": 87408.1622449,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-6",
+            "price": 87489.79469388,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-7",
+            "price": 87571.42714286,
+            "isActive": true,
+            "lastCrossed": "below",
+            "tradeCount": 1
+          },
+          {
+            "id": "grid-8",
+            "price": 87653.05959184,
+            "isActive": false,
+            "lastCrossed": "above",
+            "tradeCount": 2
+          },
+          {
+            "id": "grid-9",
+            "price": 87734.69204082,
+            "isActive": true,
+            "lastCrossed": "above",
+            "tradeCount": 2
+          },
+          {
+            "id": "grid-10",
+            "price": 87816.3244898,
+            "isActive": true,
+            "lastCrossed": "above",
+            "tradeCount": 2
+          },
+          {
+            "id": "grid-11",
+            "price": 87897.95693878,
+            "isActive": true,
+            "lastCrossed": "below",
+            "tradeCount": 3
+          },
+          {
+            "id": "grid-12",
+            "price": 87979.58938776,
+            "isActive": true,
+            "lastCrossed": "below",
+            "tradeCount": 2
+          },
+          {
+            "id": "grid-13",
+            "price": 88061.22183673,
+            "isActive": true,
+            "lastCrossed": "below",
+            "tradeCount": 1
+          },
+          {
+            "id": "grid-14",
+            "price": 88142.85428571,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-15",
+            "price": 88224.48673469,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-16",
+            "price": 88306.11918367,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-17",
+            "price": 88387.75163265,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-18",
+            "price": 88469.38408163,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-19",
+            "price": 88551.01653061,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-20",
+            "price": 88632.64897959,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-21",
+            "price": 88714.28142857,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-22",
+            "price": 88795.91387755,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-23",
+            "price": 88877.54632653,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-24",
+            "price": 88959.17877551,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-25",
+            "price": 89040.81122449,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-26",
+            "price": 89122.44367347,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-27",
+            "price": 89204.07612245,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-28",
+            "price": 89285.70857143,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-29",
+            "price": 89367.34102041,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-30",
+            "price": 89448.97346939,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-31",
+            "price": 89530.60591837,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-32",
+            "price": 89612.23836735,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-33",
+            "price": 89693.87081633,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-34",
+            "price": 89775.50326531,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-35",
+            "price": 89857.13571429,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-36",
+            "price": 89938.76816327,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-37",
+            "price": 90020.40061224,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-38",
+            "price": 90102.03306122,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-39",
+            "price": 90183.6655102,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-40",
+            "price": 90265.29795918,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-41",
+            "price": 90346.93040816,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-42",
+            "price": 90428.56285714,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-43",
+            "price": 90510.19530612,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-44",
+            "price": 90591.8277551,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-45",
+            "price": 90673.46020408,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-46",
+            "price": 90755.09265306,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-47",
+            "price": 90836.72510204,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-48",
+            "price": 90918.35755102,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-49",
+            "price": 90999.99,
+            "isActive": true,
+            "tradeCount": 0
+          }
+        ],
+        "paperStartedPrice": 87834,
+        "startedPrice": 87838,
+        "positions": [
+          {
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "quantity": 1,
+            "entryPrice": 87560.78225507,
+            "orderId": "mock-1767023694394",
+            "leverage": 30,
+            "timestampMs": 1767023694395
+          }
+        ],
+        "orders": [
+          {
+            "id": "mock-1767023840702",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 87692.6888421,
+            "triggerLevelPrice": 87653.05959184,
+            "triggerDirection": "above",
+            "prevPrice": 87647.28348387,
+            "currentPrice": 87692.6888421,
+            "createdAtMs": 1767023840702,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1767023694394",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 1,
+            "price": 87560.78225507,
+            "triggerLevelPrice": 87571.42714286,
+            "triggerDirection": "below",
+            "prevPrice": 87578.99977588,
+            "currentPrice": 87560.78225507,
+            "createdAtMs": 1767023694394,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1767023163122",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 87750.15520131,
+            "triggerLevelPrice": 87734.69204082,
+            "triggerDirection": "above",
+            "prevPrice": 87731.86619362,
+            "currentPrice": 87750.15520131,
+            "createdAtMs": 1767023163122,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1767023053781",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 87830.67572197,
+            "triggerLevelPrice": 87816.3244898,
+            "triggerDirection": "above",
+            "prevPrice": 87782.76748152,
+            "currentPrice": 87830.67572197,
+            "createdAtMs": 1767023053781,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1767022931959",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 87782.76748152,
+            "triggerLevelPrice": 87734.69204082,
+            "triggerDirection": "above",
+            "prevPrice": 87667.08221401,
+            "currentPrice": 87782.76748152,
+            "createdAtMs": 1767022931959,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766945179881",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 1,
+            "price": 87652.83107011,
+            "triggerLevelPrice": 87653.05959184,
+            "triggerDirection": "below",
+            "prevPrice": 87654.13077698,
+            "currentPrice": 87652.83107011,
+            "createdAtMs": 1766945179881,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766945140152",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 1,
+            "price": 87655.76524734,
+            "triggerLevelPrice": 87734.69204082,
+            "triggerDirection": "below",
+            "prevPrice": 87768.49716668,
+            "currentPrice": 87655.76524734,
+            "createdAtMs": 1766945140152,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766942711069",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 1,
+            "price": 87888.57188442,
+            "triggerLevelPrice": 87897.95693878,
+            "triggerDirection": "below",
+            "prevPrice": 87897.97723486,
+            "currentPrice": 87888.57188442,
+            "createdAtMs": 1766942711069,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766937305796",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 1,
+            "price": 87798.83573737,
+            "triggerLevelPrice": 87816.3244898,
+            "triggerDirection": "below",
+            "prevPrice": 87820.99949775,
+            "currentPrice": 87798.83573737,
+            "createdAtMs": 1766937305797,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766933699198",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 30,
+            "price": 87902.5,
+            "triggerLevelPrice": 87897.95693878,
+            "triggerDirection": "above",
+            "prevPrice": 87895.5,
+            "currentPrice": 87902.5,
+            "createdAtMs": 1766933699198,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766932952024",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 30,
+            "price": 87975,
+            "triggerLevelPrice": 87979.58938776,
+            "triggerDirection": "below",
+            "prevPrice": 87989,
+            "currentPrice": 87975,
+            "createdAtMs": 1766932952024,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766932930441",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 30,
+            "price": 88021,
+            "triggerLevelPrice": 88061.22183673,
+            "triggerDirection": "below",
+            "prevPrice": 88074,
+            "currentPrice": 88021,
+            "createdAtMs": 1766932930441,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766932921000",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 30,
+            "price": 88012.5,
+            "triggerLevelPrice": 87979.58938776,
+            "triggerDirection": "above",
+            "prevPrice": 87959,
+            "currentPrice": 88012.5,
+            "createdAtMs": 1766932921000,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766931832788",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 30,
+            "price": 87896.5,
+            "triggerLevelPrice": 87897.95693878,
+            "triggerDirection": "below",
+            "prevPrice": 87909,
+            "currentPrice": 87896.5,
+            "createdAtMs": 1766931832788,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766929998986",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 30,
+            "price": 87892,
+            "triggerLevelPrice": 87897.95693878,
+            "triggerDirection": "below",
+            "prevPrice": 87898.5,
+            "currentPrice": 87892,
+            "createdAtMs": 1766929998986,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766929251830",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 30,
+            "price": 87897,
+            "triggerLevelPrice": 87897.95693878,
+            "triggerDirection": "below",
+            "prevPrice": 87898,
+            "currentPrice": 87897,
+            "createdAtMs": 1766929251830,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766927764139",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 30,
+            "price": 87813,
+            "createdAtMs": 1766927764139,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766927255791",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 30,
+            "price": 87881,
+            "createdAtMs": 1766927255791,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1766925594990",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 30,
+            "price": 87801.5,
+            "createdAtMs": 1766925594990,
+            "status": "filled"
+          }
+        ],
+        "paperStats": {
+          "closedTrades": 3,
+          "profitTrades": 2,
+          "lossTrades": 1,
+          "winRate": 0.6666666666666666,
+          "realizedPnl": 76.35156351000478
+        }
+      }
+    }
+  ],
+  "activity": [
+    {
+      "id": "act_mjpy6l3l_515vot",
+      "ts": 1766939543121,
+      "type": "bot.started",
+      "botId": "bot_mjpy5awl_miwi4w",
+      "symbol": "HANAUSD",
+      "name": "HANAUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpy5awm_oxxzfq",
+      "ts": 1766939483254,
+      "type": "bot.created",
+      "botId": "bot_mjpy5awl_miwi4w",
+      "symbol": "HANAUSD",
+      "name": "HANAUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpy0qfh_saaudl",
+      "ts": 1766939270093,
+      "type": "bot.deleted",
+      "botId": "bot_mjptmsix_dfh52b",
+      "symbol": "HANAUSD",
+      "name": "HANAUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpxwut5_ve23fa",
+      "ts": 1766939089145,
+      "type": "bot.started",
+      "botId": "bot_mjpmuv72_42me5a",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpxwsvi_wmfpca",
+      "ts": 1766939086638,
+      "type": "bot.started",
+      "botId": "bot_mjpnhhdx_2xgr5c",
+      "symbol": "HIVEUSD",
+      "name": "HIVEUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpxwqzf_ub7eu3",
+      "ts": 1766939084187,
+      "type": "bot.started",
+      "botId": "bot_mjptmsix_dfh52b",
+      "symbol": "HANAUSD",
+      "name": "HANAUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpxwp4f_418ido",
+      "ts": 1766939081775,
+      "type": "bot.started",
+      "botId": "bot_mjpu7g45_23pvpl",
+      "symbol": "ETHUSD",
+      "name": "ETHUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpxw4f5_qzn5o6",
+      "ts": 1766939054945,
+      "type": "bots.emergency_stop",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpu7vti_8zdezl",
+      "ts": 1766932885206,
+      "type": "bot.started",
+      "botId": "bot_mjpu7g45_23pvpl",
+      "symbol": "ETHUSD",
+      "name": "ETHUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpu7g45_8z1zw7",
+      "ts": 1766932864853,
+      "type": "bot.created",
+      "botId": "bot_mjpu7g45_23pvpl",
+      "symbol": "ETHUSD",
+      "name": "ETHUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjptn58r_co2nt3",
+      "ts": 1766931917643,
+      "type": "bot.started",
+      "botId": "bot_mjptmsix_dfh52b",
+      "symbol": "HANAUSD",
+      "name": "HANAUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjptmsiy_oo3svy",
+      "ts": 1766931901162,
+      "type": "bot.created",
+      "botId": "bot_mjptmsix_dfh52b",
+      "symbol": "HANAUSD",
+      "name": "HANAUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpruwxp_n25d65",
+      "ts": 1766928920893,
+      "type": "bot.started",
+      "botId": "bot_mjprugtc_ad9qo1",
+      "symbol": "HANAUSD",
+      "name": "HANAUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "admin@gmail.com"
+    },
+    {
+      "id": "act_mjprugte_2ojogr",
+      "ts": 1766928900002,
+      "type": "bot.created",
+      "botId": "bot_mjprugtc_ad9qo1",
+      "symbol": "HANAUSD",
+      "name": "HANAUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "admin@gmail.com"
+    },
+    {
+      "id": "act_mjpr6v7l_f4woca",
+      "ts": 1766927798913,
+      "type": "bot.started",
+      "botId": "bot_mjpnhhdx_2xgr5c",
+      "symbol": "HIVEUSD",
+      "name": "HIVEUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpr5zqz_8i81nm",
+      "ts": 1766927758139,
+      "type": "bot.stopped",
+      "botId": "bot_mjpnhhdx_2xgr5c",
+      "symbol": "HIVEUSD",
+      "name": "HIVEUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpo1ymq_inoly6",
+      "ts": 1766922531218,
+      "type": "bot.started",
+      "botId": "bot_mjpnhhdx_2xgr5c",
+      "symbol": "HIVEUSD",
+      "name": "HIVEUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpnhhdx_40f2dw",
+      "ts": 1766921575749,
+      "type": "bot.created",
+      "botId": "bot_mjpnhhdx_2xgr5c",
+      "symbol": "HIVEUSD",
+      "name": "HIVEUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpmvqvt_i4jfc7",
+      "ts": 1766920561625,
+      "type": "bot.started",
+      "botId": "bot_mjpmuv72_42me5a",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpmvlvt_5e6ttw",
+      "ts": 1766920555145,
+      "type": "bot.stopped",
+      "botId": "bot_mjpmuv72_42me5a",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpmvj8t_vyqh0o",
+      "ts": 1766920551725,
+      "type": "bot.started",
+      "botId": "bot_mjpmuv72_42me5a",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjpmuv73_tdo5lp",
+      "ts": 1766920520559,
+      "type": "bot.created",
+      "botId": "bot_mjpmuv72_42me5a",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    }
+  ]
+}

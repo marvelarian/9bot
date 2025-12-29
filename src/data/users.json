@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "email": "admin@gmail.com",
+      "salt": "MnIhGZ/auBNyMfQFGy3dQQ==",
+      "passwordHash": "um8Xr1zJTLjlSINP9hgwa7RgRPJjFb9Dwwpy4IRBU1E=",
+      "createdAt": 1766928715067
+    },
+    {
+      "email": "deathailc@gmail.com",
+      "salt": "9b++wIjOAiTb44qG/n1OKA==",
+      "passwordHash": "khDPJ7QfbGgiGIFY+6k2KpAxqemfTuGCxfweH4KB84M=",
+      "createdAt": 1766920288226
+    }
+  ]
+}

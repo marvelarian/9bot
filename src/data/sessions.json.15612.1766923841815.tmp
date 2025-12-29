@@ -1,0 +1,34 @@
+{
+  "sessions": [
+    {
+      "token": "CdcWkT6xE7zZwOjC0DbzwRgrMFhklc1-",
+      "email": "deathailc@gmail.com",
+      "createdAt": 1766922763376,
+      "lastSeenAt": 1766923841814
+    },
+    {
+      "token": "B97ICmkk0hob0eLjZO7Lkk4T-hmp48e0",
+      "email": "deathailc@gmail.com",
+      "createdAt": 1766922630154,
+      "lastSeenAt": 1766922746146
+    },
+    {
+      "token": "5LWiyWCr8p4PPSNDdPcJrOWffJRZoBKj",
+      "email": "deathailc@gmail.com",
+      "createdAt": 1766921844492,
+      "lastSeenAt": 1766922390731
+    },
+    {
+      "token": "5WGmhPnimPVMOmNxGNeqn0p_d76aAhuA",
+      "email": "deathailc@gmail.com",
+      "createdAt": 1766921757920,
+      "lastSeenAt": 1766921839635
+    },
+    {
+      "token": "eE5bdKiGRja6Vdul_1o0bNdylUoRBKKI",
+      "email": "deathailc@gmail.com",
+      "createdAt": 1766920392429,
+      "lastSeenAt": 1766921276919
+    }
+  ]
+}
