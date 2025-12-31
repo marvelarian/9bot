@@ -6,6 +6,27 @@ export const SESSION_COOKIE = 'session';
 
 const SESSION_DAYS = 14;
 
+function shouldUseSecureCookies(): boolean {
+  // Allows running on plain HTTP (e.g. EC2 + Nginx without TLS) by setting:
+  // AUTH_COOKIE_SECURE=false
+  const v = process.env.AUTH_COOKIE_SECURE;
+  if (v != null && String(v).trim() !== '') {
+    const s = String(v).trim().toLowerCase();
+    return s === 'true' || s === '1' || s === 'yes';
+  }
+
+  // If an app/base URL is configured, infer from scheme.
+  const url =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    process.env.PUBLIC_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL;
+  if (url && /^https:\/\//i.test(url)) return true;
+
+  // Default Next.js production cookie behavior.
+  return process.env.NODE_ENV === 'production';
+}
+
 function authSecret(): string | null {
   const s = process.env.AUTH_SECRET;
   return s && s.trim() ? s.trim() : null;
@@ -93,7 +114,7 @@ export async function setSessionCookieForEmail(email: string) {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',
-    secure: process.env.NODE_ENV === 'production',
+    secure: shouldUseSecureCookies(),
     maxAge: SESSION_DAYS * 24 * 60 * 60,
   });
   return { token: value, email, createdAt: Date.now(), lastSeenAt: Date.now() } as any;
@@ -103,7 +124,13 @@ export async function clearSessionCookie() {
   const token = cookies().get(SESSION_COOKIE)?.value || null;
   // Only delete server-side session records when we're using file-based sessions.
   if (!authSecret()) await deleteSession(token);
-  cookies().set(SESSION_COOKIE, '', { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 0 });
+  cookies().set(SESSION_COOKIE, '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: shouldUseSecureCookies(),
+    maxAge: 0,
+  });
 }
 
 
