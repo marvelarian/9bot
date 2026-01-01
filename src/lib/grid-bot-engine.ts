@@ -265,6 +265,11 @@ export class GridBotEngine {
         this.paperClosedTrades += 1;
         if (pnl > 0) this.paperProfitTrades += 1;
         else if (pnl < 0) this.paperLossTrades += 1;
+
+        // Risk: consecutive loss streak (applies to both PAPER and LIVE engine bookkeeping).
+        // Increment on losing closures; reset to 0 on winning closures.
+        if (pnl < 0) this.consecutiveLosses += 1;
+        else if (pnl > 0) this.consecutiveLosses = 0;
       }
 
       // A closing trade does not open a new position.

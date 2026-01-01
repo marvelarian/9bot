@@ -397,6 +397,27 @@ export default function GridStatusPage() {
               <span>·</span>
               <span><strong>Circuit breaker:</strong> {cfg.circuitBreaker}</span>
             </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <div className="text-slate-500">Loss streak</div>
+                <div className="mt-1 font-semibold text-slate-900">
+                  {typeof bot.runtime?.consecutiveLosses === 'number' ? bot.runtime.consecutiveLosses : 0} / {cfg.maxConsecutiveLoss}
+                </div>
+                <div className="mt-1 text-[11px] text-slate-500">Counts consecutive losing closures (resets on a winning close).</div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <div className="text-slate-500">Circuit breaker</div>
+                <div className="mt-1 font-semibold text-slate-900">{Number(cfg.circuitBreaker) > 0 ? `${cfg.circuitBreaker}%` : 'Off'}</div>
+                <div className="mt-1 text-[11px] text-slate-500">Triggers on % drawdown from started equity (LIVE worker).</div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <div className="text-slate-500">Last risk stop</div>
+                <div className="mt-1 font-semibold text-slate-900">{bot.runtime?.riskStopReason || '—'}</div>
+                <div className="mt-1 text-[11px] text-slate-500">
+                  {typeof bot.runtime?.riskStoppedAt === 'number' ? new Date(bot.runtime.riskStoppedAt).toLocaleString() : '—'}
+                </div>
+              </div>
+            </div>
             {bots.length > 1 ? (
               <div className="mt-3 text-xs text-slate-500">
                 Tip: open a specific bot with <span className="font-mono">/grid-status?bot=BOT_ID</span>
@@ -569,6 +590,213 @@ export default function GridStatusPage() {
                     <div className="text-slate-500">Hover a level in the chart.</div>
                   )}
                 </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="text-xs font-semibold text-slate-700">Quick stats</div>
+                <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-slate-500">Active</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-900">{activeLevels.length}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-slate-500">Inactive</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-900">{inactiveLevels.length}</div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-slate-500">Trades</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-900">{totalLevelTrades}</div>
+                  </div>
+                </div>
+
+                <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-slate-500">Most traded level</div>
+                    <div className="mt-1 font-semibold text-slate-900">
+                      {mostTraded ? `$${formatPrice(mostTraded.price)} · ${mostTraded.tradeCount || 0}` : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-slate-500">Nearest level</div>
+                    <div className="mt-1 font-semibold text-slate-900">
+                      {nearestLevel && typeof live === 'number' ? `$${formatPrice(nearestLevel.price)}` : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-slate-500">Active %</div>
+                    <div className="mt-1 font-semibold text-slate-900">
+                      {levels.length ? `${Math.round((activeLevels.length / levels.length) * 100)}%` : '—'}
+                    </div>
+                  </div>
+                </div>
+
+                {exec === 'paper' ? (
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-semibold text-slate-700">Paper performance (simulated)</div>
+                      <Badge tone="slate">PAPER</Badge>
+                    </div>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      {(() => {
+                        const lev = Number(cfg.leverage);
+                        const qty = Number(cfg.quantity);
+                        const units = lev > 0 ? qty / lev : NaN;
+                        const startP = toNum(bot.runtime?.startedPrice ?? bot.runtime?.paperStartedPrice);
+                        const curP = typeof live === 'number' && Number.isFinite(live) ? live : null;
+                        const has = Number.isFinite(units) && units > 0 && typeof startP === 'number' && curP !== null && startP > 0;
+                        if (!has) {
+                          return (
+                            <div className="col-span-3 text-slate-500">
+                              Waiting for baseline price… start the bot and keep this page open for a few seconds.
+                            </div>
+                          );
+                        }
+                        const ps = (bot as any).runtime?.paperStats;
+                        const closedTrades = typeof ps?.closedTrades === 'number' ? ps.closedTrades : 0;
+                        const profitTrades = typeof ps?.profitTrades === 'number' ? ps.profitTrades : 0;
+                        const lossTrades = typeof ps?.lossTrades === 'number' ? ps.lossTrades : 0;
+                        const denom = profitTrades + lossTrades;
+                        const winRate = typeof ps?.winRate === 'number' ? ps.winRate : denom > 0 ? profitTrades / denom : null;
+                        const realizedPnl = typeof ps?.realizedPnl === 'number' ? ps.realizedPnl : null;
+
+                        const hasAnyPaperTrades = closedTrades > 0 || profitTrades > 0 || lossTrades > 0;
+                        if (!hasAnyPaperTrades) {
+                          return (
+                            <div className="col-span-3 text-slate-500">
+                              No trades yet — PnL starts after the first filled trade opens a position.
+                            </div>
+                          );
+                        }
+                        const initial = units * startP;
+                        const currentVal = units * curP;
+                        const pnl = cfg.mode === 'short' ? initial - currentVal : currentVal - initial;
+                        const pnlPct = initial > 0 ? (pnl / initial) * 100 : null;
+
+                        return (
+                          <>
+                            <div>
+                              <div className="text-slate-500">Realized PnL</div>
+                              <div className="font-semibold text-slate-900">
+                                {realizedPnl === null
+                                  ? '—'
+                                  : realizedPnl.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-slate-500">Win rate</div>
+                              <div className="font-semibold text-slate-900">
+                                {winRate === null ? '—' : `${(winRate * 100).toFixed(1)}%`}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-slate-500">Closed trades</div>
+                              <div className="font-semibold text-slate-900">{closedTrades}</div>
+                            </div>
+
+                            <div>
+                              <div className="text-slate-500">Profit trades</div>
+                              <div className="font-semibold text-slate-900">{profitTrades}</div>
+                            </div>
+                            <div>
+                              <div className="text-slate-500">Loss trades</div>
+                              <div className="font-semibold text-slate-900">{lossTrades}</div>
+                            </div>
+                            <div>
+                              <div className="text-slate-500">PnL%</div>
+                              <div className={`font-semibold ${pnlPct !== null && pnlPct >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                {pnlPct === null ? '—' : `${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%`}
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="text-slate-500">Simulated trades</div>
+                              <div className="font-semibold text-slate-900">{totalLevelTrades}</div>
+                            </div>
+                            <div>
+                              <div className="text-slate-500">Trades / hour</div>
+                              <div className="font-semibold text-slate-900">
+                                {tradesPerHour === null ? '—' : tradesPerHour.toFixed(2)}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-slate-500">Since</div>
+                              <div className="font-semibold text-slate-900">
+                                {startedAt ? new Date(startedAt).toLocaleTimeString() : '—'}
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <div className="mt-2 text-[11px] text-slate-500">
+                      Simulated stats are computed from round-trip trades (entry → exit). Fees/slippage are not included.
+                    </div>
+                  </div>
+                ) : null}
+
+                {exec === 'live' && fillsStats ? (
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-semibold text-slate-700">Live fills (best-effort)</div>
+                      {fillsStats.error ? <Badge tone="yellow">Unavailable</Badge> : <Badge tone="blue">Delta</Badge>}
+                    </div>
+                    <div className="mt-2 grid grid-cols-3 gap-2">
+                      <div>
+                        <div className="text-slate-500">Fills</div>
+                        <div className="font-semibold text-slate-900">{fillsStats.total}</div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">Buys / Sells</div>
+                        <div className="font-semibold text-slate-900">
+                          {fillsStats.buys} / {fillsStats.sells}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">Last fill</div>
+                        <div className="font-semibold text-slate-900">
+                          {fillsStats.lastFillMs ? new Date(fillsStats.lastFillMs).toLocaleTimeString() : '—'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">Win / Loss</div>
+                        <div className="font-semibold text-slate-900">
+                          {fillsStats.winTrades === undefined || fillsStats.lossTrades === undefined
+                            ? '—'
+                            : `${fillsStats.winTrades} / ${fillsStats.lossTrades}`}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">Win rate</div>
+                        <div className="font-semibold text-slate-900">
+                          {fillsStats.winRate === undefined ? '—' : `${(fillsStats.winRate * 100).toFixed(1)}%`}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">Avg buy</div>
+                        <div className="font-semibold text-slate-900">
+                          {fillsStats.avgBuy === undefined ? '—' : `$${formatPrice(fillsStats.avgBuy)}`}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">Avg sell</div>
+                        <div className="font-semibold text-slate-900">
+                          {fillsStats.avgSell === undefined ? '—' : `$${formatPrice(fillsStats.avgSell)}`}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-slate-500">Realized PnL</div>
+                        <div className="font-semibold text-slate-900">
+                          {fillsStats.realizedPnl === undefined
+                            ? '—'
+                            : fillsStats.realizedPnl.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-[11px] text-slate-500">
+                      Filters fills by symbol{fillsStats.sinceMs ? ' since bot start time' : ''}. If you trade manually, these counts may include non-bot fills.
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>

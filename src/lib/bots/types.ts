@@ -40,6 +40,10 @@ export type BotRecord = {
   runtime?: {
     lastPrice?: number;
     updatedAt?: number;
+    // Risk/runtime (computed by engine/worker)
+    consecutiveLosses?: number;
+    riskStopReason?: string;
+    riskStoppedAt?: number;
     startedAt?: number;
     startedEquity?: number;
     startedCurrency?: string;

@@ -30,6 +30,132 @@ function toNum(v: any): number | null {
   return null;
 }
 
+function toUpper(s: any) {
+  return String(s || '').trim().toUpperCase();
+}
+
+function pickSide(raw: any): 'buy' | 'sell' | null {
+  const s = String(raw || '').trim().toLowerCase();
+  if (s === 'buy' || s === 'long') return 'buy';
+  if (s === 'sell' || s === 'short') return 'sell';
+  return null;
+}
+
+async function fetchEquitySnapshotServer(params: { exchange: 'delta_india' | 'delta_global'; baseUrl: string }) {
+  const { auth } = await getDeltaAuth({ exchange: params.exchange });
+  const [wRes, pRes] = await Promise.all([
+    deltaFetch<any>({ method: 'GET', path: '/v2/wallet/balances', auth, baseUrl: params.baseUrl }),
+    deltaFetch<any>({ method: 'GET', path: '/v2/positions/margined', auth, baseUrl: params.baseUrl }).catch(() => null),
+  ]);
+
+  const wallet = Array.isArray(wRes?.result) ? wRes.result : [];
+  const positions = Array.isArray(pRes?.result) ? pRes.result : [];
+
+  // Prefer INR if *_inr exists (Delta India often provides this).
+  let inr = 0;
+  let hasInr = false;
+  for (const row of wallet as any[]) {
+    const bi = toNum(row?.balance_inr);
+    if (bi !== null) {
+      inr += bi;
+      hasInr = true;
+    }
+  }
+  if (hasInr) {
+    for (const p of positions as any[]) {
+      const up = toNum(p?.unrealized_pnl_inr);
+      if (up !== null) inr += up;
+    }
+    return { value: inr, label: 'INR' as const };
+  }
+
+  // Fallback: sum settlement currency balance.
+  const by: Record<string, number> = {};
+  for (const row of wallet as any[]) {
+    const sym = String(row?.asset_symbol || '');
+    const bal = toNum(row?.balance);
+    if (!sym || bal === null) continue;
+    by[sym] = (by[sym] || 0) + bal;
+  }
+  const label = by.USDC ? 'USDC' : by.USD ? 'USD' : by.INR ? 'INR' : '—';
+  return { value: label === '—' ? 0 : by[label], label: label as any };
+}
+
+async function fetchOpenPositionsForSymbol(params: {
+  exchange: 'delta_india' | 'delta_global';
+  baseUrl: string;
+  symbol: string;
+}): Promise<Array<{ symbol: string; side: 'buy' | 'sell'; sizeAbs: number }>> {
+  const { auth } = await getDeltaAuth({ exchange: params.exchange });
+  const res = await deltaFetch<any>({
+    method: 'GET',
+    path: '/v2/positions/margined',
+    auth,
+    baseUrl: params.baseUrl,
+  });
+  const list = Array.isArray(res?.result) ? res.result : Array.isArray(res) ? res : [];
+  const sym = toUpper(params.symbol);
+
+  const out: Array<{ symbol: string; side: 'buy' | 'sell'; sizeAbs: number }> = [];
+  for (const p of list as any[]) {
+    const ps = toUpper(p?.product_symbol ?? p?.symbol ?? p?.product?.symbol ?? p?.productSymbol);
+    if (!ps || ps !== sym) continue;
+
+    const side = pickSide(p?.side ?? p?.position_side ?? p?.direction ?? p?.order_side);
+    const sizeRaw =
+      toNum(p?.size) ??
+      toNum(p?.position_size) ??
+      toNum(p?.quantity) ??
+      toNum(p?.net_quantity) ??
+      toNum(p?.net_size) ??
+      toNum(p?.position_qty) ??
+      0;
+
+    const sizeNum = Number(sizeRaw);
+    if (!Number.isFinite(sizeNum) || sizeNum === 0) continue;
+
+    // Some APIs use sign for direction; if side is missing, infer from sign.
+    const inferredSide = side ?? (sizeNum > 0 ? 'buy' : 'sell');
+    out.push({ symbol: ps, side: inferredSide, sizeAbs: Math.abs(sizeNum) });
+  }
+  return out;
+}
+
+async function flattenSymbolAllPositions(params: {
+  exchange: 'delta_india' | 'delta_global';
+  baseUrl: string;
+  symbol: string;
+}): Promise<{ closed: number }> {
+  const sym = toUpper(params.symbol);
+  const open = await fetchOpenPositionsForSymbol(params);
+  let closed = 0;
+  if (!open.length) return { closed };
+
+  const { auth } = await getDeltaAuth({ exchange: params.exchange });
+  const productId = await getDeltaProductId({ baseUrl: params.baseUrl, symbol: sym });
+
+  for (const p of open) {
+    const closeSide = p.side === 'buy' ? 'sell' : 'buy';
+    const size = Number(p.sizeAbs);
+    if (!Number.isFinite(size) || size <= 0) continue;
+    await deltaFetch<any>({
+      method: 'POST',
+      path: '/v2/orders',
+      auth,
+      baseUrl: params.baseUrl,
+      body: {
+        product_id: productId,
+        side: closeSide,
+        order_type: 'market_order',
+        size,
+      },
+    });
+    closed += 1;
+  }
+
+  return { closed };
+}
+
 async function fetchDeltaMarkPrice(baseUrl: string, symbol: string): Promise<number | null> {
   try {
     const res = await fetch(`${baseUrl}/v2/tickers/${encodeURIComponent(symbol)}`, {
@@ -79,6 +205,7 @@ async function persistRuntime(ownerEmail: string, bot: BotRecord, entry: EngineE
 
   const paperStatsRaw = entry.engine.getPaperTradeStats();
   const paperStats = { ...paperStatsRaw, winRate: paperStatsRaw.winRate ?? undefined };
+  const stats = entry.engine.getStats();
 
   await patchBotForUser(ownerEmail, bot.id, {
     runtime: {
@@ -86,6 +213,7 @@ async function persistRuntime(ownerEmail: string, bot: BotRecord, entry: EngineE
       updatedAt: now,
       ...(lastPrice !== null ? { lastPrice } : {}),
       ...(baselinePatch || {}),
+      consecutiveLosses: stats.consecutiveLosses,
       positions: positions.slice(-50),
       orders: (entry.orders || []).slice(0, 120),
       paperStats,
@@ -115,6 +243,52 @@ export function startBotWorker() {
   }
 
   const engines = new Map<string, EngineEntry>();
+  const lastKnownRunning = new Map<string, boolean>();
+
+  const stopBotInStore = async (bot: BotRecord, reason: string) => {
+    await patchBotForUser(ownerEmail, bot.id, {
+      isRunning: false,
+      runtime: { ...(bot.runtime || {}), riskStopReason: reason, riskStoppedAt: Date.now(), updatedAt: Date.now() },
+    }).catch(() => null);
+  };
+
+  const stopAndFlatten = async (bot: BotRecord, ctx: { exchange: 'delta_india' | 'delta_global'; baseUrl: string; symbol: string }, reason: string) => {
+    const cfg: any = bot.config || {};
+    const exec = (((cfg as any).execution || 'paper') as 'paper' | 'live');
+
+    // LIVE: flatten ALL exchange positions for the bot symbol.
+    if (exec === 'live') {
+      try {
+        await flattenSymbolAllPositions({ exchange: ctx.exchange, baseUrl: ctx.baseUrl, symbol: ctx.symbol });
+      } catch {
+        // best-effort
+      }
+    }
+
+    // Stop engine instance if present
+    const entry = engines.get(bot.id);
+    if (entry) {
+      try {
+        await entry.engine.stop();
+      } catch {}
+      engines.delete(bot.id);
+    }
+
+    await stopBotInStore(bot, reason);
+
+    // Telegram best-effort
+    try {
+      await sendTelegramText(
+        [
+          `<b>9BOT</b> — Risk stop ⛔`,
+          `<b>Reason:</b> ${reason}`,
+          `<b>Symbol:</b> ${toUpper(ctx.symbol)}`,
+          `<b>Exchange:</b> ${ctx.exchange === 'delta_global' ? 'Delta Global' : 'Delta India'}`,
+          `<b>Time:</b> ${new Date().toISOString()}`,
+        ].join('\n')
+      );
+    } catch {}
+  };
 
   const ensureEngine = async (bot: BotRecord) => {
     const cfg: any = bot.config || {};
@@ -323,11 +497,28 @@ export function startBotWorker() {
 
   const loop = async () => {
     const bots = await listBots(ownerEmail).catch(() => []);
+    const byId = new Map(bots.map((b) => [b.id, b]));
     const running = bots.filter((b) => b.isRunning);
 
     // Stop engines for bots no longer running
     engines.forEach((entry, id) => {
       if (!running.some((b) => b.id === id)) {
+        const bot = byId.get(id) || null;
+        const wasRunning = lastKnownRunning.get(id) ?? true;
+        // Manual stop transition: close/flatten positions before stopping engine.
+        if (bot && wasRunning && bot.isRunning === false) {
+          const cfg: any = bot.config || {};
+          const ex = ((cfg as any).exchange || 'delta_india') as 'delta_india' | 'delta_global';
+          const sym = toUpper(cfg.symbol);
+          const storedPromise = readDeltaCredentials(ex);
+          void storedPromise.then((stored) => {
+            const baseUrl =
+              stored?.baseUrl ||
+              process.env.DELTA_BASE_URL ||
+              (ex === 'delta_india' ? DELTA_INDIA_BASE_URL : DEFAULT_DELTA_BASE_URL);
+            void stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, 'manual_stop');
+          });
+        }
         try {
           void entry.engine.stop();
         } catch {}
@@ -336,6 +527,7 @@ export function startBotWorker() {
     });
 
     for (const bot of running) {
+      lastKnownRunning.set(bot.id, true);
       const ensured = await ensureEngine(bot);
       if (!ensured) continue;
 
@@ -345,8 +537,56 @@ export function startBotWorker() {
       entry.lastPersistAt = now;
 
       const lastPrice = await fetchDeltaMarkPrice(baseUrl, symbol);
+
+      const cfg: any = bot.config || {};
+      const ex = ((cfg as any).exchange || 'delta_india') as 'delta_india' | 'delta_global';
+      const sym = toUpper(symbol);
+
+      // Risk 1: out of range -> stop + flatten
+      if (typeof lastPrice === 'number' && Number.isFinite(lastPrice)) {
+        const lo = Number(cfg.lowerRange);
+        const hi = Number(cfg.upperRange);
+        if (Number.isFinite(lo) && Number.isFinite(hi) && (lastPrice < lo || lastPrice > hi)) {
+          await stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, 'out_of_range');
+          continue;
+        }
+      }
+
+      // Risk 2: max consecutive loss (loss streak) -> stop + flatten
+      const maxLoss = Number(cfg.maxConsecutiveLoss);
+      if (Number.isFinite(maxLoss) && maxLoss > 0) {
+        const streak = entry.engine.getStats().consecutiveLosses;
+        if (streak >= maxLoss) {
+          await stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, `max_consecutive_loss_${maxLoss}`);
+          continue;
+        }
+      }
+
+      // Risk 3: circuit breaker (% drawdown from startedEquity) -> stop + flatten
+      const cb = Number(cfg.circuitBreaker);
+      const startedEquity = toNum(bot.runtime?.startedEquity);
+      const startedCurrency = String(bot.runtime?.startedCurrency || '').trim();
+      if (Number.isFinite(cb) && cb > 0 && startedEquity !== null && startedEquity > 0) {
+        try {
+          const snap = await fetchEquitySnapshotServer({ exchange: ex, baseUrl });
+          // Best-effort: compare only if currency matches (if known).
+          if (!startedCurrency || startedCurrency === snap.label) {
+            const ddPct = ((snap.value - startedEquity) / startedEquity) * 100;
+            if (ddPct <= -cb) {
+              await stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, `circuit_breaker_${cb}%`);
+              continue;
+            }
+          }
+        } catch {
+          // if equity calc fails, don't stop the bot
+        }
+      }
+
       await persistRuntime(ownerEmail, bot, entry, lastPrice);
     }
+
+    // Update last-known running state for bots we saw this tick
+    for (const b of bots) lastKnownRunning.set(b.id, b.isRunning);
   };
 
   // Run in fork mode only (single process) to avoid duplicate orders.
