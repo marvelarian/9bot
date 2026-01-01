@@ -192,7 +192,10 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      <BotRuntimeRunner />
+      {/* IMPORTANT:
+          - In production we run a server-side worker (EC2) for 24/7 execution.
+          - Keeping the client runner enabled can cause duplicate PAPER orders if multiple tabs are open. */}
+      {process.env.NODE_ENV === 'development' ? <BotRuntimeRunner /> : null}
       <header className="border-b border-slate-200 bg-white/70 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <NavLink href="/home" className="flex items-center gap-3">
@@ -211,6 +214,7 @@ export default function DashboardLayout({
             <NavLink className="hover:text-slate-900" href="/fills">Fills</NavLink>
             <NavLink className="hover:text-slate-900" href="/bot/create">Create Bot</NavLink>
             <NavLink className="hover:text-slate-900" href="/api-integration">API Integration</NavLink>
+            <NavLink className="hover:text-slate-900" href="/profile">Profile</NavLink>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -231,6 +235,7 @@ export default function DashboardLayout({
                     { href: '/fills', label: 'Fills' },
                     { href: '/bot/create', label: 'Create Bot' },
                     { href: '/api-integration', label: 'API Integration' },
+                    { href: '/profile', label: 'Profile' },
                   ].map((item) => (
                     <NavLink
                       key={item.href}
@@ -243,12 +248,12 @@ export default function DashboardLayout({
                 </div>
               ) : null}
             </div>
-            <button
-              onClick={logout}
+            <NavLink
+              href="/profile"
               className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
             >
-              Logout
-            </button>
+              Profile
+            </NavLink>
           </div>
         </div>
       </header>
