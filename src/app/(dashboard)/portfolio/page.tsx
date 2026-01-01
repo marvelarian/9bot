@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import type { BotRecord } from '@/lib/bots/types';
 
 type WalletRow = { asset_symbol: string; balance: string; balance_inr?: string; available_balance?: string; available_balance_inr?: string };
 
@@ -21,33 +22,57 @@ export default function PortfolioPage() {
   const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [bots, setBots] = useState<BotRecord[]>([]);
+  const [equityMode, setEquityMode] = useState<'live' | 'paper'>('live');
+  const [equity, setEquity] = useState<{ label: string; series: number[] } | null>(null);
 
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [wRes, pRes] = await Promise.all([
+      const [wRes, pRes, bRes] = await Promise.all([
         fetch('/api/delta/wallet', { cache: 'no-store' }).then((r) => r.json()),
         fetch('/api/delta/positions', { cache: 'no-store' }).then((r) => r.json()),
+        fetch('/api/bots', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ ok: false })),
       ]);
       if (!wRes?.ok) throw new Error(wRes?.error || 'wallet failed');
       if (!pRes?.ok) throw new Error(pRes?.error || 'positions failed');
       setWallet(Array.isArray(wRes.result) ? wRes.result : []);
       setPositions(Array.isArray(pRes.result) ? pRes.result : []);
+      setBots(bRes?.ok && Array.isArray(bRes.bots) ? bRes.bots : []);
     } catch (e: any) {
       setError(e?.message || 'portfolio failed');
       setWallet([]);
       setPositions([]);
+      setBots([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const loadEquity = async (mode: 'live' | 'paper') => {
+    try {
+      const res = await fetch(`/api/equity/history?mode=${encodeURIComponent(mode)}`, { cache: 'no-store' });
+      const json = await res.json().catch(() => null);
+      if (!json?.ok) throw new Error(json?.error || 'equity history failed');
+      setEquity({ label: String(json.label || '—'), series: Array.isArray(json.series) ? json.series : [] });
+    } catch {
+      setEquity({ label: '—', series: [] });
+    }
+  };
+
   useEffect(() => {
     void load();
+    void loadEquity(equityMode);
     const t = setInterval(load, 15_000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    void loadEquity(equityMode);
+    const t = setInterval(() => void loadEquity(equityMode), 15_000);
+    return () => clearInterval(t);
+  }, [equityMode]);
 
   const walletSummary = useMemo(() => {
     let inr = 0;
@@ -68,6 +93,47 @@ export default function PortfolioPage() {
     return { by, inr: hasInr ? inr : null, fallback: { sym, val } };
   }, [wallet]);
 
+  const botPnlRows = useMemo(() => {
+    const rows = (bots || []).map((b) => {
+      const exec = (((b.config as any).execution || 'paper') as 'paper' | 'live');
+      const sym = String(b.config.symbol || '').toUpperCase();
+      const paper = exec === 'paper' ? (toNum((b.runtime as any)?.paperStats?.realizedPnl) ?? 0) : null;
+      const live = exec === 'live' ? (toNum((b.runtime as any)?.liveStats?.realizedPnl) ?? null) : null;
+      return { id: b.id, name: b.name, exec, sym, realized: exec === 'paper' ? paper : live, updatedAt: (b.runtime as any)?.liveStats?.updatedAt ?? b.runtime?.updatedAt };
+    });
+    // Show running first, then by updatedAt
+    return rows.sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+  }, [bots]);
+
+  const equitySeries = equity?.series || [];
+  const equityLabel = equity?.label || '—';
+  const equityLast = equitySeries.length ? equitySeries[equitySeries.length - 1] : null;
+  const equityFirst = equitySeries.length ? equitySeries[0] : null;
+  const equityChange = equityLast !== null && equityFirst !== null ? equityLast - equityFirst : null;
+
+  const EquityChart = ({ series }: { series: number[] }) => {
+    const W = 800;
+    const H = 220;
+    const pad = 18;
+    const vals = series.filter((v) => typeof v === 'number' && Number.isFinite(v));
+    if (!vals.length) {
+      return <div className="p-6 text-sm text-slate-500">No equity history yet.</div>;
+    }
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const denom = Math.max(1e-9, max - min);
+    const x = (i: number) => pad + (i / Math.max(1, vals.length - 1)) * (W - pad * 2);
+    const y = (v: number) => pad + ((max - v) / denom) * (H - pad * 2);
+    const d = vals.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(2)} ${y(v).toFixed(2)}`).join(' ');
+    return (
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <svg viewBox={`0 0 ${W} ${H}`} className="h-[220px] w-full">
+          <path d={d} fill="none" stroke="#2563eb" strokeWidth="2" />
+        </svg>
+      </div>
+    );
+  };
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -83,6 +149,63 @@ export default function PortfolioPage() {
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-3">
+          <CardHeader
+            title="Equity chart"
+            subtitle="Stored history (worker updates 24/7 on EC2). Toggle Live/Paper."
+            right={
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEquityMode('live')}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                    equityMode === 'live' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
+                  }`}
+                >
+                  Live
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEquityMode('paper')}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                    equityMode === 'paper' ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
+                  }`}
+                >
+                  Paper
+                </button>
+              </div>
+            }
+          />
+          <CardBody>
+            <div className="grid gap-3 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <EquityChart series={equitySeries} />
+              </div>
+              <div className="space-y-3">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-xs text-slate-500">Label</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900">{equityLabel}</div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-xs text-slate-500">Current</div>
+                  <div className="mt-1 text-lg font-semibold text-slate-900">
+                    {equityLast === null ? '—' : equityLast.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-xs text-slate-500">Change</div>
+                  <div className={`mt-1 text-lg font-semibold ${equityChange !== null && equityChange >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {equityChange === null ? '—' : `${equityChange >= 0 ? '+' : ''}${equityChange.toLocaleString(undefined, { maximumFractionDigits: 6 })}`}
+                  </div>
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  Live = account equity snapshot. Paper = simulated PnL (realized + unrealized) across paper bots.
+                </div>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+
         <Card className="lg:col-span-2">
           <CardHeader title="Wallet balances" subtitle="Delta /wallet/balances" />
           <CardBody className="p-0">
@@ -145,6 +268,47 @@ export default function PortfolioPage() {
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div className="text-xs text-slate-500">Open positions</div>
               <div className="mt-1 text-lg font-semibold text-slate-900">{positions.length}</div>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+
+      <div className="mt-6">
+        <Card>
+          <CardHeader title="Bot realized PnL" subtitle="Per-bot (paper from engine; live best-effort from fills)" />
+          <CardBody className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-xs text-slate-500">
+                  <tr>
+                    <th className="px-5 py-3 text-left font-medium">Bot</th>
+                    <th className="px-5 py-3 text-left font-medium">Symbol</th>
+                    <th className="px-5 py-3 text-left font-medium">Mode</th>
+                    <th className="px-5 py-3 text-right font-medium">Realized PnL</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {botPnlRows.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-50/60">
+                      <td className="px-5 py-4 font-semibold text-slate-900">{r.name}</td>
+                      <td className="px-5 py-4 text-slate-700">{r.sym || '—'}</td>
+                      <td className="px-5 py-4">
+                        <Badge tone={r.exec === 'live' ? 'red' : 'slate'}>{r.exec.toUpperCase()}</Badge>
+                      </td>
+                      <td className={`px-5 py-4 text-right font-semibold ${r.realized !== null && r.realized >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                        {r.realized === null ? '—' : `${r.realized >= 0 ? '+' : ''}${r.realized.toLocaleString(undefined, { maximumFractionDigits: 8 })}`}
+                      </td>
+                    </tr>
+                  ))}
+                  {botPnlRows.length === 0 ? (
+                    <tr>
+                      <td className="px-5 py-10 text-center text-sm text-slate-500" colSpan={4}>
+                        No bots found.
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
             </div>
           </CardBody>
         </Card>

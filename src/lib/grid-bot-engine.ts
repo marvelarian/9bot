@@ -330,6 +330,36 @@ export class GridBotEngine {
     };
   }
 
+  /**
+   * Force-close all open positions at the given price.
+   * - PAPER: updates simulated realized PnL + consecutive loss streak via normal close bookkeeping.
+   * - LIVE: places market orders through the adapter; use with caution (the EC2 worker also flattens via exchange positions).
+   */
+  async forceCloseAllOpenPositions(currentPrice: number, reason?: 'manual_stop' | 'out_of_range' | 'circuit_breaker' | 'max_consecutive_loss') {
+    if (!Number.isFinite(currentPrice)) return;
+    const prev = typeof this.lastPrice === 'number' && Number.isFinite(this.lastPrice) ? this.lastPrice : currentPrice;
+
+    // Synthetic level for traceability. This is not part of the grid and is never persisted as active.
+    const level: GridLevel = {
+      id: `force-close-${reason || 'manual'}`,
+      price: this.normPrice(currentPrice),
+      isActive: false,
+      tradeCount: 0,
+    };
+
+    // Close positions one-by-one using the existing placeOrder bookkeeping.
+    // This guarantees we compute paper realized PnL + loss streak consistently.
+    // NOTE: placeOrder will early-return if it can't match a position, so we also guard against infinite loops.
+    let guard = 0;
+    while (this.positions.length > 0 && guard < 500) {
+      guard += 1;
+      const p = this.positions[0];
+      if (!p) break;
+      const closeSide: 'buy' | 'sell' = p.side === 'buy' ? 'sell' : 'buy';
+      await this.placeOrder(closeSide, level, currentPrice, reason === 'out_of_range' ? 'above' : 'below', prev);
+    }
+  }
+
   updateConfig(newConfig: Partial<GridBotConfig>): void {
     this.config = { ...this.config, ...newConfig };
     this.initializeGrid();

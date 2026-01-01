@@ -407,8 +407,13 @@ export default function GridStatusPage() {
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                 <div className="text-slate-500">Circuit breaker</div>
-                <div className="mt-1 font-semibold text-slate-900">{Number(cfg.circuitBreaker) > 0 ? `${cfg.circuitBreaker}%` : 'Off'}</div>
-                <div className="mt-1 text-[11px] text-slate-500">Triggers on % drawdown from started equity (LIVE worker).</div>
+                <div className="mt-1 font-semibold text-slate-900">
+                  {Number(cfg.circuitBreaker) > 0 ? `${cfg.circuitBreaker}%` : 'Off'}
+                </div>
+                <div className="mt-1 text-[11px] text-slate-500">
+                  Triggers on % drawdown from started equity (LIVE worker).
+                  {Number(cfg.circuitBreaker) > 100 ? ' (This value is unusually high; recommended 0–100.)' : ''}
+                </div>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                 <div className="text-slate-500">Last risk stop</div>

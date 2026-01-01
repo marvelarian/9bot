@@ -141,7 +141,8 @@ export default function CreateBotPage() {
     leverage: 1,
     maxPositions: 5,
     maxConsecutiveLoss: 3,
-    circuitBreaker: 1000,
+    // Circuit breaker is % drawdown from started equity. Example: 5 means stop at -5%.
+    circuitBreaker: 10,
   });
 
   useEffect(() => {
@@ -173,6 +174,8 @@ export default function CreateBotPage() {
       // Create bot configuration
       const config: GridBotConfig = {
         ...formData,
+        // Clamp circuit breaker to a sane percent range (0..100). Large values like 1000% don't make sense.
+        circuitBreaker: Math.max(0, Math.min(100, Number(formData.circuitBreaker) || 0)),
         gridSpacing: (formData.upperRange - formData.lowerRange) / (formData.numberOfGrids - 1)
       };
 
@@ -444,12 +447,13 @@ export default function CreateBotPage() {
                   value={formData.circuitBreaker}
                   onChange={(e) => updateField('circuitBreaker', Number(e.target.value))}
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-                  min="1"
-                  step="0.01"
+                  min="0"
+                  max="100"
+                  step="0.1"
                   required
                 />
                 <div className="text-[11px] text-slate-500">
-                  Emergency stop threshold for the bot (loss limit).
+                  % drawdown from started equity to trigger emergency stop + close all positions for this symbol. Example: 5 = -5%.
                 </div>
               </div>
 

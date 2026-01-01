@@ -5,12 +5,14 @@ import { readDeltaCredentials } from '@/lib/delta-credentials-store';
 import { DEFAULT_DELTA_BASE_URL, DELTA_INDIA_BASE_URL, deltaFetch, getDeltaAuth } from '@/lib/delta-signing';
 import { getDeltaProductId } from '@/lib/delta-products';
 import { sendTelegramText } from '@/lib/telegram-send';
+import { appendEquityPoint } from '@/lib/server/equity-history';
 
 type EngineEntry = {
   engine: GridBotEngine;
   configHash: string;
   orders: BotRuntimeOrder[];
   lastPersistAt: number;
+  lastLiveStatsAt?: number;
 };
 
 function safeHashConfig(cfg: unknown) {
@@ -39,6 +41,55 @@ function pickSide(raw: any): 'buy' | 'sell' | null {
   if (s === 'buy' || s === 'long') return 'buy';
   if (s === 'sell' || s === 'short') return 'sell';
   return null;
+}
+
+function pickRealizedPnl(f: any): number | null {
+  return (
+    toNum(f?.realized_pnl) ??
+    toNum(f?.realizedPnl) ??
+    toNum(f?.pnl) ??
+    toNum(f?.profit) ??
+    toNum(f?.trade_pnl) ??
+    toNum(f?.realized_pnl_inr) ??
+    toNum(f?.realized_pnl_usd) ??
+    toNum(f?.realized_pnl_usdc) ??
+    null
+  );
+}
+
+async function computeLiveRealizedPnl(params: {
+  exchange: 'delta_india' | 'delta_global';
+  baseUrl: string;
+  symbol: string;
+  sinceMs: number | null;
+}): Promise<{ realizedPnl: number; winTrades: number; lossTrades: number; winRate?: number; sinceMs?: number }> {
+  const { auth } = await getDeltaAuth({ exchange: params.exchange });
+  const qs = new URLSearchParams();
+  qs.set('symbol', toUpper(params.symbol));
+  qs.set('limit', '200');
+  if (typeof params.sinceMs === 'number' && Number.isFinite(params.sinceMs)) {
+    // Delta expects seconds (typical) but can vary; use seconds to match common API conventions.
+    qs.set('start_time', String(Math.floor(params.sinceMs / 1000)));
+  }
+  const path = `/v2/fills?${qs.toString()}`;
+  const res = await deltaFetch<any>({ method: 'GET', path, auth, baseUrl: params.baseUrl });
+  const list = Array.isArray(res?.result) ? res.result : Array.isArray(res) ? res : [];
+
+  let realized = 0;
+  let win = 0;
+  let loss = 0;
+  for (const f of list as any[]) {
+    const sym = toUpper(f?.product_symbol || f?.symbol || f?.product?.symbol);
+    if (sym && sym !== toUpper(params.symbol)) continue;
+    const rp = pickRealizedPnl(f);
+    if (rp === null) continue;
+    realized += rp;
+    if (rp > 0) win += 1;
+    else if (rp < 0) loss += 1;
+  }
+  const denom = win + loss;
+  const winRate = denom > 0 ? win / denom : undefined;
+  return { realizedPnl: realized, winTrades: win, lossTrades: loss, winRate, sinceMs: params.sinceMs ?? undefined };
 }
 
 async function fetchEquitySnapshotServer(params: { exchange: 'delta_india' | 'delta_global'; baseUrl: string }) {
@@ -244,6 +295,10 @@ export function startBotWorker() {
 
   const engines = new Map<string, EngineEntry>();
   const lastKnownRunning = new Map<string, boolean>();
+  const lastEquityAppendAt = new Map<'live' | 'paper', number>([
+    ['live', 0],
+    ['paper', 0],
+  ]);
 
   const stopBotInStore = async (bot: BotRecord, reason: string) => {
     await patchBotForUser(ownerEmail, bot.id, {
@@ -252,26 +307,52 @@ export function startBotWorker() {
     }).catch(() => null);
   };
 
-  const stopAndFlatten = async (bot: BotRecord, ctx: { exchange: 'delta_india' | 'delta_global'; baseUrl: string; symbol: string }, reason: string) => {
+  const stopAndFlatten = async (
+    bot: BotRecord,
+    ctx: { exchange: 'delta_india' | 'delta_global'; baseUrl: string; symbol: string },
+    reason: string,
+    lastPrice?: number | null
+  ) => {
     const cfg: any = bot.config || {};
     const exec = (((cfg as any).execution || 'paper') as 'paper' | 'live');
 
-    // LIVE: flatten ALL exchange positions for the bot symbol.
+    const entry = engines.get(bot.id);
+
     if (exec === 'live') {
+      // LIVE: flatten ALL exchange positions for the bot symbol.
       try {
         await flattenSymbolAllPositions({ exchange: ctx.exchange, baseUrl: ctx.baseUrl, symbol: ctx.symbol });
       } catch {
         // best-effort
       }
-    }
-
-    // Stop engine instance if present
-    const entry = engines.get(bot.id);
-    if (entry) {
-      try {
-        await entry.engine.stop();
-      } catch {}
-      engines.delete(bot.id);
+      // Stop engine instance if present
+      if (entry) {
+        try {
+          await entry.engine.stop();
+        } catch {}
+        engines.delete(bot.id);
+      }
+    } else {
+      // PAPER: force-close internal positions at the latest known price so simulated PnL/loss streak update.
+      if (entry && typeof lastPrice === 'number' && Number.isFinite(lastPrice)) {
+        try {
+          await entry.engine.forceCloseAllOpenPositions(lastPrice, reason.startsWith('max_consecutive_loss') ? 'max_consecutive_loss' : (reason as any));
+        } catch {
+          // best-effort
+        }
+        // Persist final snapshot (positions should be 0 after forced closes)
+        try {
+          await persistRuntime(ownerEmail, bot, entry, lastPrice);
+        } catch {
+          // ignore
+        }
+      }
+      if (entry) {
+        try {
+          await entry.engine.stop(); // clears any remaining positions for paper mode
+        } catch {}
+        engines.delete(bot.id);
+      }
     }
 
     await stopBotInStore(bot, reason);
@@ -500,6 +581,60 @@ export function startBotWorker() {
     const byId = new Map(bots.map((b) => [b.id, b]));
     const running = bots.filter((b) => b.isRunning);
 
+    // Periodic equity history append (24/7 on EC2)
+    const nowAll = Date.now();
+    const equityIntervalMs = Number(process.env.EQUITY_HISTORY_INTERVAL_MS || '30000');
+
+    // LIVE equity: account-level snapshot (choose delta_india if configured else delta_global)
+    if (nowAll - (lastEquityAppendAt.get('live') || 0) > equityIntervalMs) {
+      try {
+        const ex: 'delta_india' | 'delta_global' = (await readDeltaCredentials('delta_india'))
+          ? 'delta_india'
+          : (await readDeltaCredentials('delta_global'))
+            ? 'delta_global'
+            : 'delta_india';
+        const stored = await readDeltaCredentials(ex);
+        const baseUrl =
+          stored?.baseUrl ||
+          process.env.DELTA_BASE_URL ||
+          (ex === 'delta_india' ? DELTA_INDIA_BASE_URL : DEFAULT_DELTA_BASE_URL);
+        const snap = await fetchEquitySnapshotServer({ exchange: ex, baseUrl });
+        await appendEquityPoint(ownerEmail, { mode: 'live', label: snap.label, value: snap.value });
+        lastEquityAppendAt.set('live', nowAll);
+      } catch {
+        // ignore
+      }
+    }
+
+    // PAPER equity: sum of (realized + unrealized) across paper bots (best-effort)
+    if (nowAll - (lastEquityAppendAt.get('paper') || 0) > equityIntervalMs) {
+      try {
+        let total = 0;
+        for (const b of bots) {
+          const exec = (((b.config as any).execution || 'paper') as 'paper' | 'live');
+          if (exec !== 'paper') continue;
+          const lastPrice = toNum(b.runtime?.lastPrice);
+          if (lastPrice === null) continue;
+          const realized = toNum((b.runtime as any)?.paperStats?.realizedPnl) ?? 0;
+          let unreal = 0;
+          const pos = Array.isArray(b.runtime?.positions) ? b.runtime!.positions : [];
+          for (const p of pos as any[]) {
+            const qty = toNum(p?.quantity) ?? 0;
+            const entry = toNum(p?.entryPrice) ?? null;
+            const side = String(p?.side || '').toLowerCase();
+            if (!qty || entry === null) continue;
+            const pnl = side === 'sell' ? (entry - lastPrice) * qty : (lastPrice - entry) * qty;
+            unreal += pnl;
+          }
+          total += realized + unreal;
+        }
+        await appendEquityPoint(ownerEmail, { mode: 'paper', label: 'PAPER PnL', value: total });
+        lastEquityAppendAt.set('paper', nowAll);
+      } catch {
+        // ignore
+      }
+    }
+
     // Stop engines for bots no longer running
     engines.forEach((entry, id) => {
       if (!running.some((b) => b.id === id)) {
@@ -516,7 +651,7 @@ export function startBotWorker() {
               stored?.baseUrl ||
               process.env.DELTA_BASE_URL ||
               (ex === 'delta_india' ? DELTA_INDIA_BASE_URL : DEFAULT_DELTA_BASE_URL);
-            void stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, 'manual_stop');
+            void stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, 'manual_stop', bot.runtime?.lastPrice ?? null);
           });
         }
         try {
@@ -542,12 +677,32 @@ export function startBotWorker() {
       const ex = ((cfg as any).exchange || 'delta_india') as 'delta_india' | 'delta_global';
       const sym = toUpper(symbol);
 
+      // LIVE realized PnL (best-effort) persisted into runtime for Portfolio
+      if ((((cfg as any).execution || 'paper') as 'paper' | 'live') === 'live') {
+        const startedAt = toNum(bot.runtime?.startedAt);
+        const lastAt = entry.lastLiveStatsAt || 0;
+        if (now - lastAt > 30_000) {
+          entry.lastLiveStatsAt = now;
+          try {
+            const stats = await computeLiveRealizedPnl({ exchange: ex, baseUrl, symbol: sym, sinceMs: startedAt });
+            await patchBotForUser(ownerEmail, bot.id, {
+              runtime: {
+                ...(bot.runtime || {}),
+                liveStats: { ...stats, updatedAt: Date.now() },
+              },
+            }).catch(() => null);
+          } catch {
+            // ignore
+          }
+        }
+      }
+
       // Risk 1: out of range -> stop + flatten
       if (typeof lastPrice === 'number' && Number.isFinite(lastPrice)) {
         const lo = Number(cfg.lowerRange);
         const hi = Number(cfg.upperRange);
         if (Number.isFinite(lo) && Number.isFinite(hi) && (lastPrice < lo || lastPrice > hi)) {
-          await stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, 'out_of_range');
+          await stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, 'out_of_range', lastPrice);
           continue;
         }
       }
@@ -557,7 +712,7 @@ export function startBotWorker() {
       if (Number.isFinite(maxLoss) && maxLoss > 0) {
         const streak = entry.engine.getStats().consecutiveLosses;
         if (streak >= maxLoss) {
-          await stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, `max_consecutive_loss_${maxLoss}`);
+          await stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, `max_consecutive_loss_${maxLoss}`, lastPrice);
           continue;
         }
       }
@@ -573,7 +728,7 @@ export function startBotWorker() {
           if (!startedCurrency || startedCurrency === snap.label) {
             const ddPct = ((snap.value - startedEquity) / startedEquity) * 100;
             if (ddPct <= -cb) {
-              await stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, `circuit_breaker_${cb}%`);
+              await stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, `circuit_breaker_${cb}%`, lastPrice);
               continue;
             }
           }

@@ -248,12 +248,12 @@ export default function DashboardLayout({
                 </div>
               ) : null}
             </div>
-            <NavLink
-              href="/profile"
+            <button
+              onClick={logout}
               className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-50"
             >
-              Profile
-            </NavLink>
+              Logout
+            </button>
           </div>
         </div>
       </header>

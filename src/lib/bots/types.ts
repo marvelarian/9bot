@@ -58,6 +58,14 @@ export type BotRecord = {
       winRate?: number;
       realizedPnl?: number;
     };
+    liveStats?: {
+      realizedPnl?: number;
+      winTrades?: number;
+      lossTrades?: number;
+      winRate?: number;
+      sinceMs?: number;
+      updatedAt?: number;
+    };
     levels?: Array<{
       id: string;
       price: number;

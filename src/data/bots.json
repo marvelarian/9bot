@@ -21,27 +21,33 @@
       },
       "isRunning": true,
       "createdAt": 1766939483254,
-      "updatedAt": 1767023930419,
+      "updatedAt": 1767292149341,
       "runtime": {
         "startedAt": 1766939542916,
         "startedEquity": 0.95,
         "startedCurrency": "INR",
-        "lastPrice": 0.01160573,
-        "updatedAt": 1767023925873,
+        "lastPrice": 0.01130156,
+        "updatedAt": 1767292148711,
         "startedPrice": 0.01140769,
         "paperStartedPrice": 0.01140769,
-        "positions": [
-          {
-            "symbol": "HANAUSD",
-            "side": "sell",
-            "quantity": 1,
-            "entryPrice": 0.01171311,
-            "orderId": "mock-1767023053227",
-            "leverage": 5,
-            "timestampMs": 1767023053228
-          }
-        ],
+        "positions": [],
         "orders": [
+          {
+            "id": "mock-1767290699526",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HANAUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 1,
+            "price": 0.01134723,
+            "triggerLevelPrice": 0.01142857,
+            "triggerDirection": "below",
+            "prevPrice": 0.01160573,
+            "currentPrice": 0.01134723,
+            "createdAtMs": 1767290699526,
+            "status": "filled"
+          },
           {
             "id": "mock-1767023053227",
             "exchange": "delta_india",
@@ -92,11 +98,11 @@
           }
         ],
         "paperStats": {
-          "closedTrades": 1,
-          "profitTrades": 1,
+          "closedTrades": 2,
+          "profitTrades": 2,
           "lossTrades": 0,
           "winRate": 1,
-          "realizedPnl": 0.0002089699999999993
+          "realizedPnl": 0.00057485
         },
         "levels": [
           {
@@ -145,14 +151,14 @@
           {
             "id": "grid-7",
             "price": 0.01142857,
-            "isActive": true,
-            "lastCrossed": "above",
-            "tradeCount": 1
+            "isActive": false,
+            "lastCrossed": "below",
+            "tradeCount": 2
           },
           {
             "id": "grid-8",
             "price": 0.01163265,
-            "isActive": false,
+            "isActive": true,
             "lastCrossed": "above",
             "tradeCount": 1
           },
@@ -426,16 +432,33 @@
       },
       "isRunning": true,
       "createdAt": 1766932864853,
-      "updatedAt": 1767023930572,
+      "updatedAt": 1767292149688,
       "runtime": {
         "startedAt": 1766939081252,
         "startedEquity": 0.95,
         "startedCurrency": "INR",
-        "lastPrice": 2936.62900776,
-        "updatedAt": 1767023926008,
+        "lastPrice": 2986.60558385,
+        "updatedAt": 1767292149000,
         "startedPrice": 2947.3,
         "positions": [],
         "orders": [
+          {
+            "id": "rejected-1767290702417",
+            "exchange": "delta_india",
+            "execution": "live",
+            "symbol": "ETHUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 2988.93838633,
+            "triggerLevelPrice": 2940.81632653,
+            "triggerDirection": "above",
+            "prevPrice": 2936.62900776,
+            "currentPrice": 2988.93838633,
+            "createdAtMs": 1767290702417,
+            "status": "rejected",
+            "error": "Delta API error: ip_not_whitelisted_for_api_key"
+          },
           {
             "id": "rejected-1767023267921",
             "exchange": "delta_india",
@@ -829,7 +852,6 @@
           "closedTrades": 0,
           "profitTrades": 0,
           "lossTrades": 0,
-          "winRate": null,
           "realizedPnl": 0
         }
       }
@@ -1192,13 +1214,13 @@
       },
       "isRunning": true,
       "createdAt": 1766921575749,
-      "updatedAt": 1767024738591,
+      "updatedAt": 1767292149603,
       "runtime": {
         "startedAt": 1766939086045,
         "startedEquity": 0.95,
         "startedCurrency": "INR",
-        "lastPrice": 0.10214625,
-        "updatedAt": 1767024736459,
+        "lastPrice": 0.09576336,
+        "updatedAt": 1767292148960,
         "levels": [
           {
             "id": "grid-0",
@@ -1221,8 +1243,9 @@
           {
             "id": "grid-3",
             "price": 0.099375,
-            "isActive": true,
-            "tradeCount": 0
+            "isActive": false,
+            "lastCrossed": "below",
+            "tradeCount": 1
           },
           {
             "id": "grid-4",
@@ -1234,7 +1257,7 @@
           {
             "id": "grid-5",
             "price": 0.10229167,
-            "isActive": false,
+            "isActive": true,
             "lastCrossed": "above",
             "tradeCount": 2
           },
@@ -1355,8 +1378,34 @@
         ],
         "paperStartedPrice": 0.10354,
         "startedPrice": 0.1033,
-        "positions": [],
+        "positions": [
+          {
+            "symbol": "HIVEUSD",
+            "side": "buy",
+            "quantity": 10,
+            "entryPrice": 0.09593088,
+            "orderId": "mock-1767290699523",
+            "leverage": 5,
+            "timestampMs": 1767290699525
+          }
+        ],
         "orders": [
+          {
+            "id": "mock-1767290699523",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HIVEUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 10,
+            "price": 0.09593088,
+            "triggerLevelPrice": 0.099375,
+            "triggerDirection": "below",
+            "prevPrice": 0.10214625,
+            "currentPrice": 0.09593088,
+            "createdAtMs": 1767290699523,
+            "status": "filled"
+          },
           {
             "id": "mock-1766938792973",
             "exchange": "delta_india",
@@ -1512,13 +1561,13 @@
       },
       "isRunning": true,
       "createdAt": 1766920520558,
-      "updatedAt": 1767023929052,
+      "updatedAt": 1767292149781,
       "runtime": {
         "startedAt": 1766939088487,
         "startedEquity": 0.95,
         "startedCurrency": "INR",
-        "lastPrice": 87698.97504976,
-        "updatedAt": 1767023924739,
+        "lastPrice": 88091.45805277,
+        "updatedAt": 1767292149116,
         "levels": [
           {
             "id": "grid-0",
@@ -1572,7 +1621,7 @@
           {
             "id": "grid-8",
             "price": 87653.05959184,
-            "isActive": false,
+            "isActive": true,
             "lastCrossed": "above",
             "tradeCount": 2
           },
@@ -1594,8 +1643,8 @@
             "id": "grid-11",
             "price": 87897.95693878,
             "isActive": true,
-            "lastCrossed": "below",
-            "tradeCount": 3
+            "lastCrossed": "above",
+            "tradeCount": 4
           },
           {
             "id": "grid-12",
@@ -1614,14 +1663,16 @@
           {
             "id": "grid-14",
             "price": 88142.85428571,
-            "isActive": true,
-            "tradeCount": 0
+            "isActive": false,
+            "lastCrossed": "below",
+            "tradeCount": 1
           },
           {
             "id": "grid-15",
             "price": 88224.48673469,
             "isActive": true,
-            "tradeCount": 0
+            "lastCrossed": "below",
+            "tradeCount": 1
           },
           {
             "id": "grid-16",
@@ -1835,13 +1886,70 @@
             "symbol": "BTCUSD",
             "side": "buy",
             "quantity": 1,
-            "entryPrice": 87560.78225507,
-            "orderId": "mock-1767023694394",
+            "entryPrice": 88210.12621822,
+            "orderId": "mock-1767290731239",
             "leverage": 30,
-            "timestampMs": 1767023694395
+            "timestampMs": 1767290731241
+          },
+          {
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "quantity": 1,
+            "entryPrice": 88131.78762429,
+            "orderId": "mock-1767291972775",
+            "leverage": 30,
+            "timestampMs": 1767291972777
           }
         ],
         "orders": [
+          {
+            "id": "mock-1767291972775",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 1,
+            "price": 88131.78762429,
+            "triggerLevelPrice": 88142.85428571,
+            "triggerDirection": "below",
+            "prevPrice": 88199.15190271,
+            "currentPrice": 88131.78762429,
+            "createdAtMs": 1767291972775,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1767290731239",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 1,
+            "price": 88210.12621822,
+            "triggerLevelPrice": 88224.48673469,
+            "triggerDirection": "below",
+            "prevPrice": 88239.35954375,
+            "currentPrice": 88210.12621822,
+            "createdAtMs": 1767290731239,
+            "status": "filled"
+          },
+          {
+            "id": "mock-1767290699533",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 88255.59109264,
+            "triggerLevelPrice": 87897.95693878,
+            "triggerDirection": "above",
+            "prevPrice": 87698.97504976,
+            "currentPrice": 88255.59109264,
+            "createdAtMs": 1767290699533,
+            "status": "filled"
+          },
           {
             "id": "mock-1767023840702",
             "exchange": "delta_india",
@@ -2136,11 +2244,11 @@
           }
         ],
         "paperStats": {
-          "closedTrades": 3,
-          "profitTrades": 2,
+          "closedTrades": 4,
+          "profitTrades": 3,
           "lossTrades": 1,
-          "winRate": 0.6666666666666666,
-          "realizedPnl": 76.35156351000478
+          "winRate": 0.75,
+          "realizedPnl": 771.1604010800074
         }
       }
     }
