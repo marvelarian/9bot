@@ -106,6 +106,7 @@ export function BotRuntimeRunner() {
               order_type: req.order_type || 'market',
               size: req.size,
               price: req.price,
+              leverage: (cfg as any).leverage,
               // debug context (ignored by server route if unknown)
               triggerLevelPrice: req.triggerLevelPrice,
               triggerDirection: req.triggerDirection,

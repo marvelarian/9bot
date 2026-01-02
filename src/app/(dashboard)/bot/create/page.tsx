@@ -137,7 +137,8 @@ export default function CreateBotPage() {
     upperRange: 50000,
     numberOfGrids: 10,
     mode: 'long',
-    quantity: 0.001,
+    // Qty is LOTS (not contracts). 1 lot = exchange-defined contract size.
+    quantity: 1,
     leverage: 1,
     maxPositions: 5,
     maxConsecutiveLoss: 3,
@@ -166,8 +167,12 @@ export default function CreateBotPage() {
       }
 
       // Validate quantity based on symbol
-      if (formData.quantity <= 0) {
-        alert('Quantity must be greater than 0');
+      if (!Number.isFinite(formData.quantity) || formData.quantity < 1) {
+        alert('Qty (lots) must be at least 1');
+        return;
+      }
+      if (!Number.isInteger(formData.quantity)) {
+        alert('Qty must be a whole number of lots (1, 2, 3, ...)');
         return;
       }
 
@@ -388,14 +393,14 @@ export default function CreateBotPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="text-xs font-medium text-slate-600">
-                  Qty
+                  Qty (lots)
                   <input
                     type="number"
                     value={formData.quantity}
                     onChange={(e) => updateField('quantity', Number(e.target.value))}
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-                    min="0.000001"
-                    step="0.000001"
+                    min="1"
+                    step="1"
                     required
                   />
                 </label>
@@ -410,6 +415,9 @@ export default function CreateBotPage() {
                     max="100"
                     required
                   />
+                  <div className="mt-1 text-[11px] text-slate-500">
+                    LIVE: applied on Delta as <code>order leverage</code> for this product (best-effort).
+                  </div>
                 </label>
               </div>
 

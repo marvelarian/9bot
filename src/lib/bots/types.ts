@@ -40,6 +40,9 @@ export type BotRecord = {
   runtime?: {
     lastPrice?: number;
     updatedAt?: number;
+    // Delta product sizing (best-effort from server worker)
+    lotSize?: number;
+    contractValue?: number;
     // Risk/runtime (computed by engine/worker)
     consecutiveLosses?: number;
     riskStopReason?: string;

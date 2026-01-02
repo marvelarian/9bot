@@ -283,6 +283,7 @@ export default function BotDashboardPage() {
             order_type: req.order_type || 'market',
             size: req.size,
             price: req.price,
+            leverage: (config as any).leverage,
           }),
         });
         const json = await res.json();

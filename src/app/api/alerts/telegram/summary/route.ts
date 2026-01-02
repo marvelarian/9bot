@@ -12,11 +12,15 @@ function toNum(v: any): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function unitsFromConfig(cfg: any): number | null {
-  const qty = toNum(cfg?.quantity);
-  const lev = toNum(cfg?.leverage);
-  if (qty === null || lev === null || lev <= 0) return null;
-  return qty / lev;
+// Qty is LOTS. Notional multiplier for PnL = contracts * contractValue
+function notionalMultiplier(cfg: any, runtime: any): number | null {
+  const lots = toNum(cfg?.quantity);
+  if (lots === null || lots <= 0) return null;
+  const lotSize = toNum(runtime?.lotSize ?? cfg?.lotSize) ?? 1;
+  const cv = toNum(runtime?.contractValue ?? cfg?.contractValue) ?? 1;
+  const contracts = Math.floor(lots) * Math.floor(lotSize > 0 ? lotSize : 1);
+  const mult = contracts * (cv > 0 ? cv : 1);
+  return Number.isFinite(mult) && mult > 0 ? mult : null;
 }
 
 export async function POST(req: Request) {
@@ -58,14 +62,14 @@ export async function POST(req: Request) {
       const sym = String(b.config.symbol || '—').toUpperCase();
       const startP = toNum((b as any).runtime?.startedPrice);
       const curP = toNum((b as any).runtime?.lastPrice);
-      const units = unitsFromConfig(b.config);
+      const mult = notionalMultiplier(b.config, (b as any).runtime);
 
       let pnlStr = '—';
       let initStr = '—';
 
-      if (units !== null && units > 0 && startP !== null && startP > 0 && curP !== null && curP > 0) {
-        const initial = units * startP;
-        const currentVal = units * curP;
+      if (mult !== null && mult > 0 && startP !== null && startP > 0 && curP !== null && curP > 0) {
+        const initial = mult * startP;
+        const currentVal = mult * curP;
         const pnl = (b.config.mode as any) === 'short' ? initial - currentVal : currentVal - initial;
         const pct = initial > 0 ? (pnl / initial) * 100 : null;
         initStr = `$${initial.toLocaleString(undefined, { maximumFractionDigits: 8 })}`;

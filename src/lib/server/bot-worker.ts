@@ -3,9 +3,11 @@ import type { BotRecord, BotRuntimeOrder, BotRuntimePosition } from '@/lib/bots/
 import { listBots, patchBotForUser } from '@/lib/server/bots-store';
 import { readDeltaCredentials } from '@/lib/delta-credentials-store';
 import { DEFAULT_DELTA_BASE_URL, DELTA_INDIA_BASE_URL, deltaFetch, getDeltaAuth } from '@/lib/delta-signing';
-import { getDeltaProductId } from '@/lib/delta-products';
+import { getDeltaProductMeta } from '@/lib/delta-products';
+import { normalizeDeltaOrderSize } from '@/lib/delta-order-sizing';
 import { sendTelegramText } from '@/lib/telegram-send';
 import { appendEquityPoint } from '@/lib/server/equity-history';
+import { getTelegramSummaryConfig, markTelegramSummarySent } from '@/lib/server/telegram-summary-store';
 
 type EngineEntry = {
   engine: GridBotEngine;
@@ -13,7 +15,31 @@ type EngineEntry = {
   orders: BotRuntimeOrder[];
   lastPersistAt: number;
   lastLiveStatsAt?: number;
+  // Leverage is an account/product setting on Delta; apply best-effort before placing orders.
+  lastOrderLeverageApplied?: number;
+  lastOrderLeverageAppliedAt?: number;
 };
+
+function fmtPct(p: number): string {
+  return `${p >= 0 ? '+' : ''}${p.toFixed(2)}%`;
+}
+
+function toNumOrNull(v: any): number | null {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+function notionalMultiplierFromBot(bot: BotRecord): number | null {
+  const cfg: any = bot.config || {};
+  const rt: any = bot.runtime || {};
+  const lots = toNumOrNull(cfg?.quantity);
+  if (lots === null || lots <= 0) return null;
+  const lotSize = toNumOrNull(rt?.lotSize ?? cfg?.lotSize) ?? 1;
+  const cv = toNumOrNull(rt?.contractValue ?? cfg?.contractValue) ?? 1;
+  const contracts = Math.floor(lots) * Math.floor(lotSize > 0 ? lotSize : 1);
+  const mult = contracts * (cv > 0 ? cv : 1);
+  return Number.isFinite(mult) && mult > 0 ? mult : null;
+}
 
 function safeHashConfig(cfg: unknown) {
   try {
@@ -183,7 +209,7 @@ async function flattenSymbolAllPositions(params: {
   if (!open.length) return { closed };
 
   const { auth } = await getDeltaAuth({ exchange: params.exchange });
-  const productId = await getDeltaProductId({ baseUrl: params.baseUrl, symbol: sym });
+  const productId = (await getDeltaProductMeta({ baseUrl: params.baseUrl, symbol: sym })).id;
 
   for (const p of open) {
     const closeSide = p.side === 'buy' ? 'sell' : 'buy';
@@ -265,6 +291,12 @@ async function persistRuntime(ownerEmail: string, bot: BotRecord, entry: EngineE
       ...(lastPrice !== null ? { lastPrice } : {}),
       ...(baselinePatch || {}),
       consecutiveLosses: stats.consecutiveLosses,
+      lotSize: Number.isFinite(Number(entry.engine.getConfig()?.lotSize))
+        ? Number(entry.engine.getConfig().lotSize)
+        : Number((cfg as any).lotSize) || undefined,
+      contractValue: Number.isFinite(Number(entry.engine.getConfig()?.contractValue))
+        ? Number(entry.engine.getConfig().contractValue)
+        : Number((cfg as any).contractValue) || undefined,
       positions: positions.slice(-50),
       orders: (entry.orders || []).slice(0, 120),
       paperStats,
@@ -299,6 +331,7 @@ export function startBotWorker() {
     ['live', 0],
     ['paper', 0],
   ]);
+  let lastSummaryCheckAt = 0;
 
   const stopBotInStore = async (bot: BotRecord, reason: string) => {
     await patchBotForUser(ownerEmail, bot.id, {
@@ -444,16 +477,40 @@ export function startBotWorker() {
 
           // LIVE: place via Delta API (no browser session required).
           const { auth } = await getDeltaAuth({ exchange: ex });
-          const product_id =
-            typeof req.product_id === 'number' && Number.isFinite(req.product_id)
-              ? req.product_id
-              : await getDeltaProductId({ baseUrl, symbol: req.symbol || symbol });
+          const sym = req.symbol || symbol;
+          const product = await getDeltaProductMeta({ baseUrl, symbol: sym });
+          const product_id = product.id;
+          const normalized = normalizeDeltaOrderSize({ requestedSize: Number(size), product });
+          const desiredLevRaw = Number((req as any)?.leverage ?? (cfg as any)?.leverage ?? 1);
+          const desiredLev = Number.isFinite(desiredLevRaw) && desiredLevRaw > 0 ? desiredLevRaw : 1;
+
+          // Best-effort: set order leverage for this product before placing orders.
+          // Swagger: POST /v2/products/{product_id}/orders/leverage { leverage: "10" }
+          if (entry) {
+            const last = entry.lastOrderLeverageApplied;
+            const shouldApply = last === undefined || last !== desiredLev;
+            if (shouldApply) {
+              try {
+                await deltaFetch<any>({
+                  method: 'POST',
+                  path: `/v2/products/${product_id}/orders/leverage`,
+                  auth,
+                  baseUrl,
+                  body: { leverage: String(desiredLev) },
+                });
+                entry.lastOrderLeverageApplied = desiredLev;
+                entry.lastOrderLeverageAppliedAt = Date.now();
+              } catch {
+                // ignore: do not block order placement if leverage call fails
+              }
+            }
+          }
 
           const payload: any = {
             product_id,
             side,
             order_type: order_type === 'limit' ? 'limit_order' : 'market_order',
-            size: Number(size),
+            size: normalized.size,
           };
           if (order_type === 'limit' && typeof price === 'number' && Number.isFinite(price)) payload.price = price;
 
@@ -473,10 +530,10 @@ export function startBotWorker() {
                 id,
                 exchange: ex,
                 execution: 'live',
-                symbol: req.symbol || symbol,
+                symbol: sym,
                 side,
                 order_type,
-                size: Number(size),
+                size: normalized.size,
                 price,
                 triggerLevelPrice: req.triggerLevelPrice,
                 triggerDirection: req.triggerDirection,
@@ -494,10 +551,10 @@ export function startBotWorker() {
                 [
                   `<b>9BOT</b> — Order placed ✅`,
                   `<b>Exchange:</b> ${ex === 'delta_global' ? 'Delta Global' : 'Delta India'}`,
-                  `<b>Symbol:</b> ${(req.symbol || symbol).toUpperCase()}`,
+                  `<b>Symbol:</b> ${sym.toUpperCase()}`,
                   `<b>Side:</b> ${String(side || '').toUpperCase()}`,
                   `<b>Type:</b> ${String(order_type || 'market').toUpperCase()}`,
-                  `<b>Size:</b> ${Number(size)}`,
+                  `<b>Size:</b> ${normalized.size}${normalized.adjusted ? ` (adj from ${Number(size)})` : ''}`,
                   `<b>Order ID:</b> ${id}`,
                   `<b>Time:</b> ${new Date().toISOString()}`,
                 ].join('\n')
@@ -512,7 +569,7 @@ export function startBotWorker() {
                 id: rid,
                 exchange: ex,
                 execution: 'live',
-                symbol: req.symbol || symbol,
+                symbol: sym,
                 side,
                 order_type,
                 size: Number(size),
@@ -549,7 +606,23 @@ export function startBotWorker() {
         },
       };
 
-      const engine = new GridBotEngine(cfg, adapter as any);
+      // Derive lot sizing from Delta products (public endpoint; no auth required).
+      // Qty in config is ALWAYS lots. Order size (contracts) = lots * lotSize.
+      let lotSize = 1;
+      let contractValue = 1;
+      try {
+        const meta = await getDeltaProductMeta({ baseUrl, symbol: cfg.symbol || symbol });
+        const ms = Number(meta.minOrderSize ?? 1);
+        const cv = Number(meta.contractValue ?? 1);
+        lotSize = Number.isFinite(ms) && ms > 0 ? Math.floor(ms) : 1;
+        contractValue = Number.isFinite(cv) && cv > 0 ? cv : 1;
+      } catch {
+        // best-effort: keep defaults
+      }
+
+      const cfgWithMeta = { ...cfg, lotSize, contractValue };
+
+      const engine = new GridBotEngine(cfgWithMeta, adapter as any);
       try {
         engine.hydrateRuntime({
           lastPrice: bot.runtime?.lastPrice,
@@ -569,7 +642,17 @@ export function startBotWorker() {
     }
 
     if (entry.configHash !== nextHash) {
-      entry.engine.updateConfig(cfg);
+      // Keep lot sizing meta in sync on config changes (symbol changes, etc.)
+      let lotSize = 1;
+      let contractValue = 1;
+      try {
+        const meta = await getDeltaProductMeta({ baseUrl, symbol: cfg.symbol || symbol });
+        const ms = Number(meta.minOrderSize ?? 1);
+        const cv = Number(meta.contractValue ?? 1);
+        lotSize = Number.isFinite(ms) && ms > 0 ? Math.floor(ms) : 1;
+        contractValue = Number.isFinite(cv) && cv > 0 ? cv : 1;
+      } catch {}
+      entry.engine.updateConfig({ ...cfg, lotSize, contractValue });
       entry.configHash = nextHash;
     }
 
@@ -632,6 +715,87 @@ export function startBotWorker() {
         lastEquityAppendAt.set('paper', nowAll);
       } catch {
         // ignore
+      }
+    }
+
+    // Periodic Telegram summary (server-side scheduled; no browser required).
+    // Controlled by /api/alerts/telegram/summary-config (intervalMinutes) stored per ownerEmail.
+    if (nowAll - lastSummaryCheckAt > 30_000) {
+      lastSummaryCheckAt = nowAll;
+      try {
+        const cfg = await getTelegramSummaryConfig(ownerEmail);
+        const dueMs = (cfg.intervalMinutes || 0) * 60_000;
+        const isEnabled = dueMs > 0;
+        const lastSentAt = typeof cfg.lastSentAt === 'number' ? cfg.lastSentAt : 0;
+        const isDue = isEnabled && (lastSentAt === 0 || nowAll - lastSentAt >= dueMs);
+        if (isDue) {
+          const runningCount = running.length;
+          const lines: string[] = [];
+          lines.push(`<b>9BOT</b> — Summary`);
+          lines.push(`<b>Total bots:</b> ${bots.length} · <b>Running:</b> ${runningCount}`);
+          lines.push(`<b>Time:</b> ${new Date(nowAll).toISOString()}`);
+          lines.push('');
+
+          let totalInitial = 0;
+          let totalCurrent = 0;
+          let totalPnl = 0;
+          let totalsOk = 0;
+
+          const show = bots.slice(0, 25);
+          for (const b of show) {
+            const exec = (((b.config as any)?.execution || 'paper') as 'paper' | 'live');
+            const ex = ((b.config as any)?.exchange || 'delta_india') as 'delta_india' | 'delta_global';
+            const exLabel = ex === 'delta_global' ? 'DG' : 'DI';
+            const sym = String(b.config.symbol || '—').toUpperCase();
+            const startP = toNumOrNull((b as any).runtime?.startedPrice);
+            const curP = toNumOrNull((b as any).runtime?.lastPrice);
+            const mult = notionalMultiplierFromBot(b);
+
+            let pnlStr = '—';
+            let initStr = '—';
+            if (mult !== null && startP !== null && startP > 0 && curP !== null && curP > 0) {
+              const initial = mult * startP;
+              const currentVal = mult * curP;
+              const pnl = (b.config.mode as any) === 'short' ? initial - currentVal : currentVal - initial;
+              const pct = initial > 0 ? (pnl / initial) * 100 : null;
+              initStr = `$${initial.toLocaleString(undefined, { maximumFractionDigits: 8 })}`;
+              pnlStr =
+                pct === null ? '—' : `${fmtPct(pct)} ($${pnl.toLocaleString(undefined, { maximumFractionDigits: 8 })})`;
+              totalInitial += initial;
+              totalCurrent += currentVal;
+              totalPnl += pnl;
+              totalsOk += 1;
+            }
+
+            lines.push(
+              [
+                `<b>${sym}</b> · ${exLabel} · ${exec.toUpperCase()} · ${b.isRunning ? 'RUNNING' : 'STOPPED'}`,
+                `Init: ${initStr} · PnL: ${pnlStr}`,
+                `Start: ${startP === null ? '—' : startP.toLocaleString(undefined, { maximumFractionDigits: 8 })} · Now: ${
+                  curP === null ? '—' : curP.toLocaleString(undefined, { maximumFractionDigits: 8 })
+                }`,
+              ].join('\n')
+            );
+            lines.push('');
+          }
+
+          if (bots.length > show.length) lines.push(`<i>+ ${bots.length - show.length} more bots not shown</i>`);
+
+          if (totalsOk > 0) {
+            const pct = totalInitial > 0 ? (totalPnl / totalInitial) * 100 : null;
+            lines.unshift(
+              `<b>Total notional:</b> Init $${totalInitial.toLocaleString(undefined, { maximumFractionDigits: 8 })} · ` +
+                `Now $${totalCurrent.toLocaleString(undefined, { maximumFractionDigits: 8 })} · ` +
+                `PnL ${pct === null ? '—' : fmtPct(pct)} ($${totalPnl.toLocaleString(undefined, { maximumFractionDigits: 8 })})`
+            );
+            lines.unshift('');
+          }
+
+          await sendTelegramText(lines.join('\n'));
+          await markTelegramSummarySent(ownerEmail, nowAll);
+        }
+      } catch {
+        // ignore (no telegram configured, etc.)
       }
     }
 

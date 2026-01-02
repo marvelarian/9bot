@@ -6,7 +6,12 @@ export interface GridBotConfig {
   upperRange: number;
   numberOfGrids: number;
   mode: 'long' | 'short' | 'neutral';
+  // Quantity is ALWAYS expressed in "lots" (not Delta contracts).
+  // Actual Delta order size (contracts) = quantityLots * lotSize
   quantity: number;
+  // Delta product meta (best-effort, filled by server worker)
+  lotSize?: number; // often product_specs.min_order_size, defaults to 1
+  contractValue?: number; // contract_value, defaults to 1
   leverage: number;
   maxPositions: number;
   maxConsecutiveLoss: number;

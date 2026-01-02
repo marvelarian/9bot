@@ -9,6 +9,7 @@ export interface ExchangeAdapter {
     order_type: 'market' | 'limit';
     size: number;
     price?: number;
+    leverage?: number;
     // Debug/trace fields (ignored by real exchange routes)
     triggerLevelPrice?: number;
     triggerDirection?: 'above' | 'below';
@@ -37,6 +38,10 @@ export class GridBotEngine {
   constructor(config: GridBotConfig, private exchange: ExchangeAdapter) {
     this.config = config;
     this.initializeGrid();
+  }
+
+  getConfig(): GridBotConfig {
+    return this.config;
   }
 
   private normPrice(p: number): number {
@@ -175,10 +180,16 @@ export class GridBotEngine {
 
       // neutral
       if (crossed === 'below') {
+        // BUY in neutral either closes an existing SELL, or opens a new BUY.
+        // Closing must be allowed even if maxPositions is reached.
+        if (this.positions.some((p) => p.side === 'sell')) return true;
         const openBuys = this.positions.filter((p) => p.side === 'buy').length;
         return openBuys < this.config.maxPositions;
       }
       if (crossed === 'above') {
+        // SELL in neutral either closes an existing BUY, or opens a new SELL.
+        // Closing must be allowed even if maxPositions is reached.
+        if (this.positions.some((p) => p.side === 'buy')) return true;
         const openSells = this.positions.filter((p) => p.side === 'sell').length;
         return openSells < this.config.maxPositions;
       }
@@ -217,9 +228,16 @@ export class GridBotEngine {
     triggerDirection: 'above' | 'below',
     prevPrice: number
   ): Promise<void> {
-    // Delta order `size` is the contract/base size; leverage is configured separately.
-    // Using quantity*leverage here would oversize orders and cause margin errors.
-    const orderSize = this.config.quantity;
+    // IMPORTANT:
+    // - Bot config `quantity` is expressed in LOTS (user input).
+    // - Delta order `size` is in CONTRACTS.
+    // - Actual order size (contracts) = lots * lotSize
+    const lotsRaw = Number(this.config.quantity);
+    const lots = Math.floor(lotsRaw);
+    const lotSizeRaw = Number((this.config as any).lotSize ?? 1);
+    const lotSize = Number.isFinite(lotSizeRaw) && lotSizeRaw > 0 ? Math.floor(lotSizeRaw) : 1;
+    const orderSize = lots * lotSize;
+    if (!Number.isFinite(orderSize) || orderSize <= 0) return;
     const order = await this.exchange.placeOrder({
       exchange: (this.config as any).exchange,
       symbol: this.config.symbol,
@@ -227,6 +245,7 @@ export class GridBotEngine {
       order_type: 'market',
       size: orderSize,
       price,
+      leverage: this.config.leverage,
       triggerLevelPrice: level.price,
       triggerDirection,
       prevPrice,
@@ -260,7 +279,11 @@ export class GridBotEngine {
       const exit = Number(price);
       const qty = Number(closed.quantity);
       if (Number.isFinite(entry) && Number.isFinite(exit) && Number.isFinite(qty)) {
-        const pnl = closed.side === 'buy' ? (exit - entry) * qty : (entry - exit) * qty;
+        // Delta products often have contract_value != 1 (e.g. HUSD contract_value=100).
+        // PnL should be scaled by contract_value.
+        const cvRaw = Number((this.config as any).contractValue ?? 1);
+        const cv = Number.isFinite(cvRaw) && cvRaw > 0 ? cvRaw : 1;
+        const pnl = (closed.side === 'buy' ? (exit - entry) * qty : (entry - exit) * qty) * cv;
         this.paperRealizedPnl += pnl;
         this.paperClosedTrades += 1;
         if (pnl > 0) this.paperProfitTrades += 1;

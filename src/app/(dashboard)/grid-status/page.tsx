@@ -41,6 +41,18 @@ function parseTsMs(v: any): number | undefined {
   return undefined;
 }
 
+function formatDuration(ms: number | null): string {
+  if (ms === null || !Number.isFinite(ms) || ms < 0) return '—';
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const hh = String(h).padStart(2, '0');
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
+}
+
 function pickSide(f: any): 'buy' | 'sell' | null {
   const s = String(f?.side || f?.order_side || f?.direction || '').toLowerCase();
   return s === 'buy' || s === 'sell' ? (s as any) : null;
@@ -73,6 +85,7 @@ export default function GridStatusPage() {
   const [bot, setBot] = useState<BotRecord | null>(null);
   const [bots, setBots] = useState<BotRecord[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [liveEquity, setLiveEquity] = useState<{ value: number; label: string; at: number; error?: string } | null>(null);
   const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
   const [zoom, setZoom] = useState<number>(1);
   const [fillsStats, setFillsStats] = useState<{
@@ -176,6 +189,25 @@ export default function GridStatusPage() {
   const tradesPerHour =
     sessionMs && sessionMs > 0 ? (totalLevelTrades / (sessionMs / 3600000)) : null;
 
+  const lotSize = typeof bot.runtime?.lotSize === 'number' && Number.isFinite(bot.runtime.lotSize) ? bot.runtime.lotSize : Number((cfg as any).lotSize) || 1;
+  const contractValue =
+    typeof bot.runtime?.contractValue === 'number' && Number.isFinite(bot.runtime.contractValue) ? bot.runtime.contractValue : Number((cfg as any).contractValue) || 1;
+  const lots = Number(cfg.quantity);
+  const contractsPerOrder = Number.isFinite(lots) ? Math.floor(lots) * Math.floor(lotSize) : null;
+
+  const startedEquity = typeof bot.runtime?.startedEquity === 'number' && Number.isFinite(bot.runtime.startedEquity) ? bot.runtime.startedEquity : null;
+  const startedCurrency = typeof bot.runtime?.startedCurrency === 'string' ? bot.runtime.startedCurrency : null;
+  const ddPct =
+    exec === 'live' &&
+    startedEquity !== null &&
+    startedEquity > 0 &&
+    liveEquity &&
+    typeof liveEquity.value === 'number' &&
+    Number.isFinite(liveEquity.value) &&
+    (!startedCurrency || startedCurrency === liveEquity.label)
+      ? ((liveEquity.value - startedEquity) / startedEquity) * 100
+      : null;
+
   const mostTraded = useMemo(() => {
     if (!levels.length) return null;
     let best: GridLevel | null = null;
@@ -194,6 +226,27 @@ export default function GridStatusPage() {
     }
     return best;
   }, [levels, live]);
+
+  const openPositions = useMemo(() => {
+    const list = Array.isArray(bot?.runtime?.positions) ? bot!.runtime!.positions! : [];
+    return list.filter((p) => p && typeof p.quantity === 'number' && Number.isFinite(p.quantity) && p.quantity !== 0);
+  }, [bot?.runtime?.positions]);
+  const openCount = openPositions.length;
+  const openBuys = openPositions.filter((p) => p.side === 'buy').length;
+  const openSells = openPositions.filter((p) => p.side === 'sell').length;
+
+  const estUnrealizedPnl = useMemo(() => {
+    if (!(typeof live === 'number' && Number.isFinite(live))) return null;
+    let sum = 0;
+    for (const p of openPositions) {
+      const qty = Number(p.quantity);
+      const entry = Number(p.entryPrice);
+      if (!Number.isFinite(qty) || !Number.isFinite(entry) || qty === 0) continue;
+      const pnl = p.side === 'sell' ? (entry - live) * qty : (live - entry) * qty;
+      sum += pnl;
+    }
+    return Number.isFinite(sum) ? sum : null;
+  }, [live, openPositions]);
 
   useEffect(() => {
     // Best-effort trade/fill stats (only meaningful for LIVE execution, and still account-level).
@@ -306,6 +359,38 @@ export default function GridStatusPage() {
     };
   }, [bot?.id, bot?.isRunning, bot?.runtime?.startedAt]);
 
+  useEffect(() => {
+    // LIVE equity snapshot for showing current drawdown vs started equity (UI-only; requires logged-in session).
+    if (!bot) return;
+    if (exec !== 'live') {
+      setLiveEquity(null);
+      return;
+    }
+    const ex = ((bot.config as any).exchange || 'delta_india') as any;
+    let alive = true;
+    const load = async () => {
+      try {
+        const snap = await fetchEquitySnapshot(ex);
+        if (!alive) return;
+        setLiveEquity({ value: snap.value, label: snap.label, at: Date.now() });
+      } catch (e: any) {
+        if (!alive) return;
+        setLiveEquity((prev) => ({
+          value: prev?.value ?? 0,
+          label: prev?.label ?? '—',
+          at: Date.now(),
+          error: e?.message || 'equity failed',
+        }));
+      }
+    };
+    void load();
+    const t = setInterval(load, bot.isRunning ? 15_000 : 30_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [bot?.id, bot?.isRunning, exec]);
+
   // After all hooks are declared, it is safe to early-return.
   if (!bot) {
     return (
@@ -387,7 +472,11 @@ export default function GridStatusPage() {
               <span>·</span>
               <span><strong>Grids:</strong> {cfg.numberOfGrids}</span>
               <span>·</span>
-              <span><strong>Qty:</strong> {cfg.quantity}</span>
+              <span><strong>Lots:</strong> {cfg.quantity}</span>
+              <span>·</span>
+              <span><strong>Lot size:</strong> {lotSize}</span>
+              <span>·</span>
+              <span><strong>Contracts/order:</strong> {contractsPerOrder ?? '—'}</span>
               <span>·</span>
               <span><strong>Leverage:</strong> {cfg.leverage}x</span>
               <span>·</span>
@@ -413,6 +502,24 @@ export default function GridStatusPage() {
                 <div className="mt-1 text-[11px] text-slate-500">
                   Triggers on % drawdown from started equity (LIVE worker).
                   {Number(cfg.circuitBreaker) > 100 ? ' (This value is unusually high; recommended 0–100.)' : ''}
+                </div>
+                <div className="mt-2 text-[11px] text-slate-600">
+                  Current DD:{' '}
+                  {ddPct === null ? (
+                    '—'
+                  ) : (
+                    <span className={ddPct >= 0 ? 'text-emerald-700' : 'text-rose-700'}>
+                      {ddPct >= 0 ? '+' : ''}
+                      {ddPct.toFixed(2)}%
+                    </span>
+                  )}
+                  {exec === 'live' && liveEquity && startedEquity !== null ? (
+                    <span className="text-slate-500">
+                      {' '}
+                      · {liveEquity.label} {liveEquity.value.toLocaleString(undefined, { maximumFractionDigits: 2 })} /{' '}
+                      {startedEquity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </span>
+                  ) : null}
                 </div>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
@@ -635,6 +742,37 @@ export default function GridStatusPage() {
                   </div>
                 </div>
 
+                <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-slate-500">Open positions</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-900">
+                      {openCount} / {cfg.maxPositions}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-slate-500">Buys / Sells</div>
+                    <div className="mt-1 font-semibold text-slate-900">
+                      {openBuys} / {openSells}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <div className="text-slate-500">Unrealized PnL (est.)</div>
+                    <div
+                      className={`mt-1 font-semibold ${
+                        estUnrealizedPnl === null
+                          ? 'text-slate-900'
+                          : estUnrealizedPnl >= 0
+                            ? 'text-emerald-700'
+                            : 'text-rose-700'
+                      }`}
+                    >
+                      {estUnrealizedPnl === null
+                        ? '—'
+                        : estUnrealizedPnl.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                    </div>
+                  </div>
+                </div>
+
                 {exec === 'paper' ? (
                   <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                     <div className="flex items-center justify-between gap-2">
@@ -644,8 +782,10 @@ export default function GridStatusPage() {
                     <div className="mt-2 grid grid-cols-3 gap-2">
                       {(() => {
                         const lev = Number(cfg.leverage);
-                        const qty = Number(cfg.quantity);
-                        const units = lev > 0 ? qty / lev : NaN;
+                        const lots = Number(cfg.quantity);
+                        const contracts = Number.isFinite(lots) ? Math.floor(lots) * Math.floor(lotSize) : NaN;
+                        const cv = Number(contractValue) || 1;
+                        const notionalMultiplier = contracts * cv;
                         const startP = toNum(bot.runtime?.startedPrice ?? bot.runtime?.paperStartedPrice);
                         const curP = typeof live === 'number' && Number.isFinite(live) ? live : null;
                         const ps = (bot as any).runtime?.paperStats;
@@ -658,14 +798,18 @@ export default function GridStatusPage() {
 
                         const hasAnyPaperTrades = closedTrades > 0 || profitTrades > 0 || lossTrades > 0;
                         const hasBaseline =
-                          Number.isFinite(units) && units > 0 && typeof startP === 'number' && curP !== null && startP > 0;
+                          Number.isFinite(notionalMultiplier) &&
+                          notionalMultiplier > 0 &&
+                          typeof startP === 'number' &&
+                          curP !== null &&
+                          startP > 0;
 
                         const updatedAt = typeof bot.runtime?.updatedAt === 'number' ? bot.runtime.updatedAt : null;
                         const ageMs = updatedAt ? Date.now() - updatedAt : null;
                         const staleWhileRunning = bot.isRunning && (ageMs === null || ageMs > 15_000);
 
-                        const initial = hasBaseline ? units * (startP as number) : null;
-                        const currentVal = hasBaseline ? units * (curP as number) : null;
+                        const initial = hasBaseline ? notionalMultiplier * (startP as number) : null;
+                        const currentVal = hasBaseline ? notionalMultiplier * (curP as number) : null;
                         const pnl = hasBaseline
                           ? cfg.mode === 'short'
                             ? (initial as number) - (currentVal as number)
@@ -739,10 +883,8 @@ export default function GridStatusPage() {
                               </div>
                             </div>
                             <div>
-                              <div className="text-slate-500">Since</div>
-                              <div className="font-semibold text-slate-900">
-                                {startedAt ? new Date(startedAt).toLocaleTimeString() : '—'}
-                              </div>
+                              <div className="text-slate-500">Duration</div>
+                              <div className="font-semibold text-slate-900">{formatDuration(sessionMs)}</div>
                             </div>
 
                             <div className="col-span-3 mt-1 text-[11px] text-slate-500">
