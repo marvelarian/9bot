@@ -648,14 +648,6 @@ export default function GridStatusPage() {
                         const units = lev > 0 ? qty / lev : NaN;
                         const startP = toNum(bot.runtime?.startedPrice ?? bot.runtime?.paperStartedPrice);
                         const curP = typeof live === 'number' && Number.isFinite(live) ? live : null;
-                        const has = Number.isFinite(units) && units > 0 && typeof startP === 'number' && curP !== null && startP > 0;
-                        if (!has) {
-                          return (
-                            <div className="col-span-3 text-slate-500">
-                              Waiting for baseline price… start the bot and keep this page open for a few seconds.
-                            </div>
-                          );
-                        }
                         const ps = (bot as any).runtime?.paperStats;
                         const closedTrades = typeof ps?.closedTrades === 'number' ? ps.closedTrades : 0;
                         const profitTrades = typeof ps?.profitTrades === 'number' ? ps.profitTrades : 0;
@@ -665,20 +657,43 @@ export default function GridStatusPage() {
                         const realizedPnl = typeof ps?.realizedPnl === 'number' ? ps.realizedPnl : null;
 
                         const hasAnyPaperTrades = closedTrades > 0 || profitTrades > 0 || lossTrades > 0;
-                        if (!hasAnyPaperTrades) {
-                          return (
-                            <div className="col-span-3 text-slate-500">
-                              No trades yet — PnL starts after the first filled trade opens a position.
-                            </div>
-                          );
-                        }
-                        const initial = units * startP;
-                        const currentVal = units * curP;
-                        const pnl = cfg.mode === 'short' ? initial - currentVal : currentVal - initial;
-                        const pnlPct = initial > 0 ? (pnl / initial) * 100 : null;
+                        const hasBaseline =
+                          Number.isFinite(units) && units > 0 && typeof startP === 'number' && curP !== null && startP > 0;
+
+                        const updatedAt = typeof bot.runtime?.updatedAt === 'number' ? bot.runtime.updatedAt : null;
+                        const ageMs = updatedAt ? Date.now() - updatedAt : null;
+                        const staleWhileRunning = bot.isRunning && (ageMs === null || ageMs > 15_000);
+
+                        const initial = hasBaseline ? units * (startP as number) : null;
+                        const currentVal = hasBaseline ? units * (curP as number) : null;
+                        const pnl = hasBaseline
+                          ? cfg.mode === 'short'
+                            ? (initial as number) - (currentVal as number)
+                            : (currentVal as number) - (initial as number)
+                          : null;
+                        const pnlPct = hasBaseline && initial && initial > 0 ? (pnl! / initial) * 100 : null;
 
                         return (
                           <>
+                            {staleWhileRunning ? (
+                              <div className="col-span-3 rounded-lg border border-amber-200 bg-amber-50 p-2 text-amber-800">
+                                Bot is marked <strong>Running</strong>, but runtime is not updating.
+                                <div className="mt-1 text-[11px] text-amber-700">
+                                  This usually means the EC2 worker isn’t running, or <code>BOT_WORKER_OWNER_EMAIL</code> does not match the email that owns this bot.
+                                  Ensure <code>BOT_WORKER_ENABLED=true</code> and restart your server/PM2.
+                                </div>
+                              </div>
+                            ) : null}
+
+                            {!hasBaseline ? (
+                              <div className="col-span-3 text-slate-500">
+                                Waiting for baseline price from the server worker…
+                                <div className="mt-1 text-[11px] text-slate-500">
+                                  When the worker runs, it will set <code>startedPrice</code> automatically (no need to keep this page open).
+                                </div>
+                              </div>
+                            ) : null}
+
                             <div>
                               <div className="text-slate-500">Realized PnL</div>
                               <div className="font-semibold text-slate-900">
@@ -728,6 +743,10 @@ export default function GridStatusPage() {
                               <div className="font-semibold text-slate-900">
                                 {startedAt ? new Date(startedAt).toLocaleTimeString() : '—'}
                               </div>
+                            </div>
+
+                            <div className="col-span-3 mt-1 text-[11px] text-slate-500">
+                              Worker heartbeat: {updatedAt ? `${Math.round((ageMs || 0) / 1000)}s ago` : '—'} · Baseline: {typeof startP === 'number' ? formatPrice(startP) : '—'}
                             </div>
                           </>
                         );

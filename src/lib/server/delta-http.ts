@@ -1,8 +1,8 @@
 // Server-only Delta HTTP helper that forces IPv4 egress (no extra deps).
 // We force IPv4 by overriding DNS lookup to `family: 4`.
 
-import dns from 'node:dns';
-import https from 'node:https';
+import dns from 'dns';
+import https from 'https';
 
 export async function requestJsonIPv4(params: {
   url: string;
