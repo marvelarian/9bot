@@ -189,14 +189,18 @@ export default function GridStatusPage() {
   const tradesPerHour =
     sessionMs && sessionMs > 0 ? (totalLevelTrades / (sessionMs / 3600000)) : null;
 
-  const lotSize = typeof bot.runtime?.lotSize === 'number' && Number.isFinite(bot.runtime.lotSize) ? bot.runtime.lotSize : Number((cfg as any).lotSize) || 1;
+  const lotSize =
+    typeof bot?.runtime?.lotSize === 'number' && Number.isFinite(bot.runtime.lotSize) ? bot.runtime.lotSize : Number((cfg as any).lotSize) || 1;
   const contractValue =
-    typeof bot.runtime?.contractValue === 'number' && Number.isFinite(bot.runtime.contractValue) ? bot.runtime.contractValue : Number((cfg as any).contractValue) || 1;
+    typeof bot?.runtime?.contractValue === 'number' && Number.isFinite(bot.runtime.contractValue)
+      ? bot.runtime.contractValue
+      : Number((cfg as any).contractValue) || 1;
   const lots = Number(cfg.quantity);
   const contractsPerOrder = Number.isFinite(lots) ? Math.floor(lots) * Math.floor(lotSize) : null;
 
-  const startedEquity = typeof bot.runtime?.startedEquity === 'number' && Number.isFinite(bot.runtime.startedEquity) ? bot.runtime.startedEquity : null;
-  const startedCurrency = typeof bot.runtime?.startedCurrency === 'string' ? bot.runtime.startedCurrency : null;
+  const startedEquity =
+    typeof bot?.runtime?.startedEquity === 'number' && Number.isFinite(bot.runtime.startedEquity) ? bot.runtime.startedEquity : null;
+  const startedCurrency = typeof bot?.runtime?.startedCurrency === 'string' ? bot.runtime.startedCurrency : null;
   const ddPct =
     exec === 'live' &&
     startedEquity !== null &&
@@ -228,7 +232,7 @@ export default function GridStatusPage() {
   }, [levels, live]);
 
   const openPositions = useMemo(() => {
-    const list = Array.isArray(bot?.runtime?.positions) ? bot!.runtime!.positions! : [];
+    const list = Array.isArray(bot?.runtime?.positions) ? (bot?.runtime?.positions as any[]) : [];
     return list.filter((p) => p && typeof p.quantity === 'number' && Number.isFinite(p.quantity) && p.quantity !== 0);
   }, [bot?.runtime?.positions]);
   const openCount = openPositions.length;

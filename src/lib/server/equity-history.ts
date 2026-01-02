@@ -14,7 +14,14 @@ type EquityDbV2 = {
 };
 
 const FILE = 'equity-history.json';
-const MAX_POINTS = 240;
+// Keep much more history so Portfolio chart can show the full timeline.
+// You can override in production: EQUITY_HISTORY_MAX_POINTS=20000 (or 0 to disable truncation).
+function getMaxPoints(): number {
+  const raw = Number(process.env.EQUITY_HISTORY_MAX_POINTS || '20000');
+  if (!Number.isFinite(raw)) return 20000;
+  if (raw <= 0) return 0; // 0 = unlimited (no truncation)
+  return Math.min(Math.max(240, Math.floor(raw)), 200000);
+}
 
 function isV2(x: any): x is EquityDbV2 {
   return x && typeof x === 'object' && x.version === 2 && x.byEmail && typeof x.byEmail === 'object';
@@ -59,7 +66,8 @@ export async function appendEquityPoint(email: string, point: { mode?: EquityMod
   const label = point.label || prev.label || '—';
   const series = Array.isArray(prev.series) ? prev.series.slice() : [];
   series.push(point.value);
-  const next: EquitySeries = { label, series: series.slice(-MAX_POINTS) };
+  const max = getMaxPoints();
+  const next: EquitySeries = { label, series: max > 0 ? series.slice(-max) : series };
 
   db.byEmail[email] = mode === 'paper' ? { ...rec, paper: next } : { ...rec, live: next };
   await writeDb(db);

@@ -1,6 +1,106 @@
 {
   "bots": [
     {
+      "id": "bot_mjx96zp2_k1mtye",
+      "ownerEmail": "deathailc@gmail.com",
+      "name": "ACTUSD Grid",
+      "config": {
+        "exchange": "delta_india",
+        "execution": "paper",
+        "symbol": "ACTUSD",
+        "lowerRange": 0.02,
+        "upperRange": 0.04,
+        "numberOfGrids": 10,
+        "mode": "long",
+        "quantity": 1,
+        "leverage": 1,
+        "maxPositions": 5,
+        "maxConsecutiveLoss": 3,
+        "circuitBreaker": 10,
+        "gridSpacing": 0.0022222222222222222
+      },
+      "isRunning": true,
+      "createdAt": 1767381301046,
+      "updatedAt": 1767381990337,
+      "runtime": {
+        "lastPrice": 0.02909281,
+        "updatedAt": 1767381988652,
+        "startedPrice": 0.02907925,
+        "paperStartedPrice": 0.02907925,
+        "positions": [],
+        "orders": [],
+        "paperStats": {
+          "closedTrades": 0,
+          "profitTrades": 0,
+          "lossTrades": 0,
+          "realizedPnl": 0
+        },
+        "levels": [
+          {
+            "id": "grid-0",
+            "price": 0.02,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-1",
+            "price": 0.02222222,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-2",
+            "price": 0.02444444,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-3",
+            "price": 0.02666667,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-4",
+            "price": 0.02888889,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-5",
+            "price": 0.03111111,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-6",
+            "price": 0.03333333,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-7",
+            "price": 0.03555556,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-8",
+            "price": 0.03777778,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-9",
+            "price": 0.04,
+            "isActive": true,
+            "tradeCount": 0
+          }
+        ],
+        "startedAt": 1767381486263
+      }
+    },
+    {
       "id": "bot_mjvsu71y_h178px",
       "ownerEmail": "deathailc@gmail.com",
       "name": "FILUSD Grid",
@@ -19,12 +119,12 @@
         "circuitBreaker": 10,
         "gridSpacing": 1111.111111111111
       },
-      "isRunning": true,
+      "isRunning": false,
       "createdAt": 1767293364023,
-      "updatedAt": 1767294088646,
+      "updatedAt": 1767381197220,
       "runtime": {
-        "lastPrice": 1.52343647,
-        "updatedAt": 1767294057871,
+        "lastPrice": 1.45585187,
+        "updatedAt": 1767381194353,
         "startedPrice": 1.5209401,
         "paperStartedPrice": 1.5209401,
         "positions": [],
@@ -96,7 +196,8 @@
             "isActive": true,
             "tradeCount": 0
           }
-        ]
+        ],
+        "startedAt": 1767294057871
       }
     },
     {
@@ -120,7 +221,7 @@
       },
       "isRunning": false,
       "createdAt": 1766939483254,
-      "updatedAt": 1767292604648,
+      "updatedAt": 1767381197220,
       "runtime": {
         "startedAt": 1766939542916,
         "startedEquity": 0.95,
@@ -529,15 +630,15 @@
         "circuitBreaker": 100,
         "gridSpacing": 12.244897959183673
       },
-      "isRunning": true,
+      "isRunning": false,
       "createdAt": 1766932864853,
-      "updatedAt": 1767294087812,
+      "updatedAt": 1767381198221,
       "runtime": {
         "startedAt": 1766939081252,
         "startedEquity": 0.95,
         "startedCurrency": "INR",
-        "lastPrice": 2989.72113552,
-        "updatedAt": 1767294056921,
+        "lastPrice": 3118.18212103,
+        "updatedAt": 1767381197734,
         "startedPrice": 2947.3,
         "positions": [],
         "orders": [
@@ -1328,15 +1429,15 @@
         "circuitBreaker": 1000,
         "gridSpacing": 0.0014583333333333334
       },
-      "isRunning": true,
+      "isRunning": false,
       "createdAt": 1766921575749,
-      "updatedAt": 1767294088617,
+      "updatedAt": 1767381197220,
       "runtime": {
         "startedAt": 1766939086045,
         "startedEquity": 0.95,
         "startedCurrency": "INR",
-        "lastPrice": 0.09580168,
-        "updatedAt": 1767294057868,
+        "lastPrice": 0.09755474,
+        "updatedAt": 1767381194368,
         "levels": [
           {
             "id": "grid-0",
@@ -1506,6 +1607,22 @@
           }
         ],
         "orders": [
+          {
+            "id": "mock-1767381159061",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "HIVEUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 10,
+            "price": 0.09744917,
+            "triggerLevelPrice": 0.09645833,
+            "triggerDirection": "above",
+            "prevPrice": 0.09580168,
+            "currentPrice": 0.09744917,
+            "createdAtMs": 1767381159061,
+            "status": "filled"
+          },
           {
             "id": "mock-1767290699523",
             "exchange": "delta_india",
@@ -1677,7 +1794,7 @@
       },
       "isRunning": false,
       "createdAt": 1766920520558,
-      "updatedAt": 1767292670716,
+      "updatedAt": 1767381197220,
       "runtime": {
         "startedAt": 1766939088487,
         "startedEquity": 0.95,
@@ -2370,6 +2487,33 @@
     }
   ],
   "activity": [
+    {
+      "id": "act_mjx9a7bw_p3mrnk",
+      "ts": 1767381450908,
+      "type": "bot.started",
+      "botId": "bot_mjx96zp2_k1mtye",
+      "symbol": "ACTUSD",
+      "name": "ACTUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjx96zp2_6iro3m",
+      "ts": 1767381301046,
+      "type": "bot.created",
+      "botId": "bot_mjx96zp2_k1mtye",
+      "symbol": "ACTUSD",
+      "name": "ACTUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjx94rl1_88nc2y",
+      "ts": 1767381197221,
+      "type": "bots.emergency_stop",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
     {
       "id": "act_mjvsuf1v_3uq1an",
       "ts": 1767293374387,

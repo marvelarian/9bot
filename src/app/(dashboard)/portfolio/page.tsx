@@ -115,7 +115,20 @@ export default function PortfolioPage() {
     const W = 800;
     const H = 220;
     const pad = 18;
-    const vals = series.filter((v) => typeof v === 'number' && Number.isFinite(v));
+    const raw = series.filter((v) => typeof v === 'number' && Number.isFinite(v));
+    // If history is very long, downsample for SVG performance while still showing the full timespan.
+    const MAX_RENDER = 2000;
+    const vals =
+      raw.length <= MAX_RENDER
+        ? raw
+        : (() => {
+            const step = Math.ceil(raw.length / MAX_RENDER);
+            const out: number[] = [];
+            for (let i = 0; i < raw.length; i += step) out.push(raw[i]!);
+            // Ensure last point is included
+            if (out[out.length - 1] !== raw[raw.length - 1]) out.push(raw[raw.length - 1]!);
+            return out;
+          })();
     if (!vals.length) {
       return <div className="p-6 text-sm text-slate-500">No equity history yet.</div>;
     }
