@@ -1,6 +1,105 @@
 {
   "bots": [
     {
+      "id": "bot_mjvsu71y_h178px",
+      "ownerEmail": "deathailc@gmail.com",
+      "name": "FILUSD Grid",
+      "config": {
+        "exchange": "delta_india",
+        "execution": "paper",
+        "symbol": "FILUSD",
+        "lowerRange": 40000,
+        "upperRange": 50000,
+        "numberOfGrids": 10,
+        "mode": "neutral",
+        "quantity": 0.001,
+        "leverage": 1,
+        "maxPositions": 5,
+        "maxConsecutiveLoss": 3,
+        "circuitBreaker": 10,
+        "gridSpacing": 1111.111111111111
+      },
+      "isRunning": true,
+      "createdAt": 1767293364023,
+      "updatedAt": 1767294088646,
+      "runtime": {
+        "lastPrice": 1.52343647,
+        "updatedAt": 1767294057871,
+        "startedPrice": 1.5209401,
+        "paperStartedPrice": 1.5209401,
+        "positions": [],
+        "orders": [],
+        "paperStats": {
+          "closedTrades": 0,
+          "profitTrades": 0,
+          "lossTrades": 0,
+          "realizedPnl": 0
+        },
+        "levels": [
+          {
+            "id": "grid-0",
+            "price": 40000,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-1",
+            "price": 41111.11111111,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-2",
+            "price": 42222.22222222,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-3",
+            "price": 43333.33333333,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-4",
+            "price": 44444.44444444,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-5",
+            "price": 45555.55555556,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-6",
+            "price": 46666.66666667,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-7",
+            "price": 47777.77777778,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-8",
+            "price": 48888.88888889,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-9",
+            "price": 50000,
+            "isActive": true,
+            "tradeCount": 0
+          }
+        ]
+      }
+    },
+    {
       "id": "bot_mjpy5awl_miwi4w",
       "ownerEmail": "deathailc@gmail.com",
       "name": "HANAUSD Grid",
@@ -19,15 +118,15 @@
         "circuitBreaker": 1000,
         "gridSpacing": 0.00020408163265306123
       },
-      "isRunning": true,
+      "isRunning": false,
       "createdAt": 1766939483254,
-      "updatedAt": 1767292149341,
+      "updatedAt": 1767292604648,
       "runtime": {
         "startedAt": 1766939542916,
         "startedEquity": 0.95,
         "startedCurrency": "INR",
-        "lastPrice": 0.01130156,
-        "updatedAt": 1767292148711,
+        "lastPrice": 0.01132237,
+        "updatedAt": 1767292603842,
         "startedPrice": 0.01140769,
         "paperStartedPrice": 0.01140769,
         "positions": [],
@@ -432,16 +531,33 @@
       },
       "isRunning": true,
       "createdAt": 1766932864853,
-      "updatedAt": 1767292149688,
+      "updatedAt": 1767294087812,
       "runtime": {
         "startedAt": 1766939081252,
         "startedEquity": 0.95,
         "startedCurrency": "INR",
-        "lastPrice": 2986.60558385,
-        "updatedAt": 1767292149000,
+        "lastPrice": 2989.72113552,
+        "updatedAt": 1767294056921,
         "startedPrice": 2947.3,
         "positions": [],
         "orders": [
+          {
+            "id": "rejected-1767293689043",
+            "exchange": "delta_india",
+            "execution": "live",
+            "symbol": "ETHUSD",
+            "side": "sell",
+            "order_type": "market",
+            "size": 1,
+            "price": 2990.18931856,
+            "triggerLevelPrice": 2989.79591837,
+            "triggerDirection": "above",
+            "prevPrice": 2989.55139004,
+            "currentPrice": 2990.18931856,
+            "createdAtMs": 1767293689044,
+            "status": "rejected",
+            "error": "Delta API error: ip_not_whitelisted_for_api_key"
+          },
           {
             "id": "rejected-1767290702417",
             "exchange": "delta_india",
@@ -1214,13 +1330,13 @@
       },
       "isRunning": true,
       "createdAt": 1766921575749,
-      "updatedAt": 1767292149603,
+      "updatedAt": 1767294088617,
       "runtime": {
         "startedAt": 1766939086045,
         "startedEquity": 0.95,
         "startedCurrency": "INR",
-        "lastPrice": 0.09576336,
-        "updatedAt": 1767292148960,
+        "lastPrice": 0.09580168,
+        "updatedAt": 1767294057868,
         "levels": [
           {
             "id": "grid-0",
@@ -1559,15 +1675,15 @@
         "circuitBreaker": 600,
         "gridSpacing": 81.63244897959194
       },
-      "isRunning": true,
+      "isRunning": false,
       "createdAt": 1766920520558,
-      "updatedAt": 1767292149781,
+      "updatedAt": 1767292670716,
       "runtime": {
         "startedAt": 1766939088487,
         "startedEquity": 0.95,
         "startedCurrency": "INR",
-        "lastPrice": 88091.45805277,
-        "updatedAt": 1767292149116,
+        "lastPrice": 88135.7948243,
+        "updatedAt": 1767292669677,
         "levels": [
           {
             "id": "grid-0",
@@ -2254,6 +2370,46 @@
     }
   ],
   "activity": [
+    {
+      "id": "act_mjvsuf1v_3uq1an",
+      "ts": 1767293374387,
+      "type": "bot.started",
+      "botId": "bot_mjvsu71y_h178px",
+      "symbol": "FILUSD",
+      "name": "FILUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjvsu71z_zvcy2f",
+      "ts": 1767293364023,
+      "type": "bot.created",
+      "botId": "bot_mjvsu71y_h178px",
+      "symbol": "FILUSD",
+      "name": "FILUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjvsfc3g_ksp1nz",
+      "ts": 1767292670716,
+      "type": "bot.stopped",
+      "botId": "bot_mjpmuv72_42me5a",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjvsdw3u_yekyta",
+      "ts": 1767292603338,
+      "type": "bot.stopped",
+      "botId": "bot_mjpy5awl_miwi4w",
+      "symbol": "HANAUSD",
+      "name": "HANAUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
     {
       "id": "act_mjpy6l3l_515vot",
       "ts": 1766939543121,
