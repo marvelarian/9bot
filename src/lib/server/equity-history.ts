@@ -38,7 +38,10 @@ async function readDb(): Promise<EquityDbV2> {
     const live = v1.byEmail[email] || { label: '—', series: [] };
     byEmail[email] = { live, paper: { label: '—', series: [] } };
   }
-  return { version: 2, byEmail };
+  const migrated = { version: 2, byEmail };
+  // Write back the migrated data to persist the migration
+  await writeDb(migrated);
+  return migrated;
 }
 
 async function writeDb(db: EquityDbV2) {

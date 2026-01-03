@@ -55,8 +55,15 @@ export default function PortfolioPage() {
       const res = await fetch(`/api/equity/history?mode=${encodeURIComponent(mode)}`, { cache: 'no-store' });
       const json = await res.json().catch(() => null);
       if (!json?.ok) throw new Error(json?.error || 'equity history failed');
-      setEquity({ label: String(json.label || '—'), series: Array.isArray(json.series) ? json.series : [] });
-    } catch {
+      const series = Array.isArray(json.series) ? json.series : [];
+      setEquity({ label: String(json.label || '—'), series });
+
+      // Show warning if paper mode has no data (likely bot worker not enabled)
+      if (mode === 'paper' && series.length === 0) {
+        console.warn('Paper equity chart is empty. Ensure BOT_WORKER_ENABLED=true in your environment variables.');
+      }
+    } catch (error) {
+      console.error(`Failed to load ${mode} equity:`, error);
       setEquity({ label: '—', series: [] });
     }
   };
@@ -212,7 +219,9 @@ export default function PortfolioPage() {
                   </div>
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  Live = account equity snapshot. Paper = simulated PnL (realized + unrealized) across paper bots.
+                  Live = total account balance (wallet + unrealized P&L). Paper = simulated equity (initial capital + realized + unrealized P&L) across paper bots.
+                  <br />
+                  {equityMode === 'paper' && equitySeries.length === 0 && <span className="text-amber-600">⚠️ No paper data? Ensure BOT_WORKER_ENABLED=true.</span>}
                 </div>
               </div>
             </div>

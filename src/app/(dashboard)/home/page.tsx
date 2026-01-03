@@ -506,7 +506,7 @@ export default function DashboardHomePage() {
                             const pct = initial > 0 ? (realizedPnl / initial) * 100 : null;
                             if (pct === null) return '—';
                             const cls = pct >= 0 ? 'text-emerald-700' : 'text-rose-700';
-                            return <span className={cls}>{`${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}</span>;
+                            return <span className={cls} title="Realized P&L from completed trades">{`${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}</span>;
                           }
 
                           // LIVE: mark-to-market PnL% once a position exists
@@ -517,7 +517,7 @@ export default function DashboardHomePage() {
                           const pct = initial > 0 ? (pnl / initial) * 100 : null;
                           if (pct === null) return '—';
                           const cls = pct >= 0 ? 'text-emerald-700' : 'text-rose-700';
-                          return <span className={cls}>{`${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}</span>;
+                          return <span className={cls} title="Mark-to-market P&L including unrealized gains/losses">{`${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}</span>;
                         })()}
                       </div>
                     </div>

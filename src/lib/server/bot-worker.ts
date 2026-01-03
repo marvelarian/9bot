@@ -689,29 +689,41 @@ export function startBotWorker() {
       }
     }
 
-    // PAPER equity: sum of (realized + unrealized) across paper bots (best-effort)
+    // PAPER equity: sum of (initial capital + realized + unrealized) across paper bots (best-effort)
     if (nowAll - (lastEquityAppendAt.get('paper') || 0) > equityIntervalMs) {
       try {
-        let total = 0;
+        let totalEquity = 0;
         for (const b of bots) {
           const exec = (((b.config as any).execution || 'paper') as 'paper' | 'live');
           if (exec !== 'paper') continue;
           const lastPrice = toNum(b.runtime?.lastPrice);
           if (lastPrice === null) continue;
+
+          // Calculate initial capital for this bot
+          const lev = Number((b.config as any)?.leverage) || 1;
+          const qty = Number((b.config as any)?.quantity) || 0;
+          const units = lev > 0 ? qty / lev : 0;
+          const startPrice = toNum(b.runtime?.startedPrice ?? b.runtime?.paperStartedPrice);
+          const initialCapital = (startPrice !== null && units > 0) ? units * startPrice : 0;
+
+          // Add realized P&L
           const realized = toNum((b.runtime as any)?.paperStats?.realizedPnl) ?? 0;
-          let unreal = 0;
+
+          // Calculate unrealized P&L from open positions
+          let unrealized = 0;
           const pos = Array.isArray(b.runtime?.positions) ? b.runtime!.positions : [];
           for (const p of pos as any[]) {
-            const qty = toNum(p?.quantity) ?? 0;
+            const pQty = toNum(p?.quantity) ?? 0;
             const entry = toNum(p?.entryPrice) ?? null;
             const side = String(p?.side || '').toLowerCase();
-            if (!qty || entry === null) continue;
-            const pnl = side === 'sell' ? (entry - lastPrice) * qty : (lastPrice - entry) * qty;
-            unreal += pnl;
+            if (!pQty || entry === null) continue;
+            const pnl = side === 'sell' ? (entry - lastPrice) * pQty : (lastPrice - entry) * pQty;
+            unrealized += pnl;
           }
-          total += realized + unreal;
+
+          totalEquity += initialCapital + realized + unrealized;
         }
-        await appendEquityPoint(ownerEmail, { mode: 'paper', label: 'PAPER PnL', value: total });
+        await appendEquityPoint(ownerEmail, { mode: 'paper', label: 'PAPER Equity', value: totalEquity });
         lastEquityAppendAt.set('paper', nowAll);
       } catch {
         // ignore

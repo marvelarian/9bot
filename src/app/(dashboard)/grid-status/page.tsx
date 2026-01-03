@@ -819,7 +819,10 @@ export default function GridStatusPage() {
                             ? (initial as number) - (currentVal as number)
                             : (currentVal as number) - (initial as number)
                           : null;
-                        const pnlPct = hasBaseline && initial && initial > 0 ? (pnl! / initial) * 100 : null;
+
+                        // For PAPER execution, use realized PnL instead of mark-to-market for consistency with home page
+                        const pnlForPct = exec === 'paper' && realizedPnl !== null ? realizedPnl : pnl;
+                        const pnlPct = hasBaseline && initial && initial > 0 && pnlForPct !== null ? (pnlForPct / initial) * 100 : null;
 
                         return (
                           <>
@@ -842,14 +845,14 @@ export default function GridStatusPage() {
                               </div>
                             ) : null}
 
-                            <div>
-                              <div className="text-slate-500">Realized PnL</div>
-                              <div className="font-semibold text-slate-900">
-                                {realizedPnl === null
-                                  ? '—'
-                                  : realizedPnl.toLocaleString(undefined, { maximumFractionDigits: 8 })}
-                              </div>
-                            </div>
+                      <div>
+                        <div className="text-slate-500">Realized PnL</div>
+                        <div className="font-semibold text-slate-900" title="P&L from completed trades only">
+                          {realizedPnl === null
+                            ? '—'
+                            : realizedPnl.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                        </div>
+                      </div>
                             <div>
                               <div className="text-slate-500">Win rate</div>
                               <div className="font-semibold text-slate-900">
