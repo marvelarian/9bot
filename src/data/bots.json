@@ -21,14 +21,41 @@
       },
       "isRunning": true,
       "createdAt": 1767381301046,
-      "updatedAt": 1767381990337,
+      "updatedAt": 1767433660417,
       "runtime": {
-        "lastPrice": 0.02909281,
-        "updatedAt": 1767381988652,
+        "lastPrice": 0.02883438,
+        "updatedAt": 1767433658228,
         "startedPrice": 0.02907925,
         "paperStartedPrice": 0.02907925,
-        "positions": [],
-        "orders": [],
+        "positions": [
+          {
+            "symbol": "ACTUSD",
+            "side": "buy",
+            "quantity": 1,
+            "entryPrice": 0.02885649,
+            "orderId": "mock-1767433635113",
+            "leverage": 1,
+            "timestampMs": 1767433635118
+          }
+        ],
+        "orders": [
+          {
+            "id": "mock-1767433635113",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "ACTUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 1,
+            "price": 0.02885649,
+            "triggerLevelPrice": 0.02888889,
+            "triggerDirection": "below",
+            "prevPrice": 0.02889383,
+            "currentPrice": 0.02885649,
+            "createdAtMs": 1767433635113,
+            "status": "filled"
+          }
+        ],
         "paperStats": {
           "closedTrades": 0,
           "profitTrades": 0,
@@ -63,8 +90,9 @@
           {
             "id": "grid-4",
             "price": 0.02888889,
-            "isActive": true,
-            "tradeCount": 0
+            "isActive": false,
+            "lastCrossed": "below",
+            "tradeCount": 1
           },
           {
             "id": "grid-5",
