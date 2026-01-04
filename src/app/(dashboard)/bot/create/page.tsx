@@ -251,10 +251,18 @@ export default function CreateBotPage() {
 
       // Create bot configuration
       const config: GridBotConfig = {
-        ...formData,
-        investment: Number((formData as any)?.investment) || 300,
+        exchange: formData.exchange,
+        execution: formData.execution,
+        symbol: formData.symbol,
+        lowerRange: formData.lowerRange,
+        upperRange: formData.upperRange,
         numberOfGrids: effectiveGrids,
-        // Clamp circuit breaker to a sane percent range (0..100). Large values like 1000% don't make sense.
+        mode: formData.mode,
+        investment: formData.investment,
+        quantity: formData.quantity,
+        leverage: formData.leverage,
+        maxPositions: formData.maxPositions,
+        maxConsecutiveLoss: formData.maxConsecutiveLoss,
         circuitBreaker: Math.max(0, Math.min(100, Number(formData.circuitBreaker) || 0)),
         gridSpacing: gridSpacingAbs,
         refPriceAtCreate: refPrice,
