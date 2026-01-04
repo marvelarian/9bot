@@ -252,6 +252,7 @@ export default function CreateBotPage() {
       // Create bot configuration
       const config: GridBotConfig = {
         ...formData,
+        investment: Number((formData as any)?.investment) || 300,
         numberOfGrids: effectiveGrids,
         // Clamp circuit breaker to a sane percent range (0..100). Large values like 1000% don't make sense.
         circuitBreaker: Math.max(0, Math.min(100, Number(formData.circuitBreaker) || 0)),
