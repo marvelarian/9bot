@@ -153,6 +153,13 @@ export class GridBotEngine {
   ): Promise<void> {
     if (this.consecutiveLosses >= this.config.maxConsecutiveLoss) return;
 
+    // Determine the "last inactive grid level" price.
+    // Engine invariant: after a successful order, exactly one level is inactive (the one that fired).
+    // On startup (or if runtime is empty), there may be none; in that case, do not apply guards.
+    const lastInactive = this.levels.find((l) => !this.activeLevels.has(l.id)) || null;
+    const lastInactivePrice =
+      lastInactive && typeof lastInactive.price === 'number' && Number.isFinite(lastInactive.price) ? lastInactive.price : null;
+
     // Decide if we should place an order for this crossing.
     // NOTE: We only "consume" (deactivate) the level if we actually place an order.
     const shouldPlace = () => {
@@ -162,6 +169,8 @@ export class GridBotEngine {
           return openBuys < this.config.maxPositions;
         }
         if (crossed === 'above') {
+          // LONG: SELL is a closing trade; only allow it above the last inactive grid level.
+          if (lastInactivePrice !== null && !(level.price > lastInactivePrice)) return false;
           return this.positions.some((p) => p.side === 'buy');
         }
         return false;
@@ -173,6 +182,8 @@ export class GridBotEngine {
           return openSells < this.config.maxPositions;
         }
         if (crossed === 'below') {
+          // SHORT: BUY is a closing trade; only allow it below the last inactive grid level.
+          if (lastInactivePrice !== null && !(level.price < lastInactivePrice)) return false;
           return this.positions.some((p) => p.side === 'sell');
         }
         return false;
@@ -182,14 +193,22 @@ export class GridBotEngine {
       if (crossed === 'below') {
         // BUY in neutral either closes an existing SELL, or opens a new BUY.
         // Closing must be allowed even if maxPositions is reached.
-        if (this.positions.some((p) => p.side === 'sell')) return true;
+        if (this.positions.some((p) => p.side === 'sell')) {
+          // Neutral closing BUY (closing SELL) must be below the last inactive grid level.
+          if (lastInactivePrice !== null && !(level.price < lastInactivePrice)) return false;
+          return true;
+        }
         const openBuys = this.positions.filter((p) => p.side === 'buy').length;
         return openBuys < this.config.maxPositions;
       }
       if (crossed === 'above') {
         // SELL in neutral either closes an existing BUY, or opens a new SELL.
         // Closing must be allowed even if maxPositions is reached.
-        if (this.positions.some((p) => p.side === 'buy')) return true;
+        if (this.positions.some((p) => p.side === 'buy')) {
+          // Neutral closing SELL (closing BUY) must be above the last inactive grid level.
+          if (lastInactivePrice !== null && !(level.price > lastInactivePrice)) return false;
+          return true;
+        }
         const openSells = this.positions.filter((p) => p.side === 'sell').length;
         return openSells < this.config.maxPositions;
       }

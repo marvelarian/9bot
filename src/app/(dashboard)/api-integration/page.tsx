@@ -17,6 +17,9 @@ export default function ApiIntegrationPage() {
   const [wallet, setWallet] = useState<Array<{ asset_symbol: string; balance: string }>>([]);
   const [credInfo, setCredInfo] = useState<any>(null);
   const [publicIp, setPublicIp] = useState<{ ipv4: string | null; ipv6: string | null } | null>(null);
+  const [auditEntries, setAuditEntries] = useState<any[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditQ, setAuditQ] = useState('');
 
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
@@ -34,6 +37,7 @@ export default function ApiIntegrationPage() {
   const [tgSummaryMinutes, setTgSummaryMinutes] = useState<number>(0);
   const [tgSummarySaving, setTgSummarySaving] = useState(false);
   const [tgSummarySending, setTgSummarySending] = useState(false);
+  const [deintegrating, setDeintegrating] = useState(false);
 
   const fetchJsonWithTimeout = async (url: string, init?: RequestInit, timeoutMs: number = 8000) => {
     const controller = new AbortController();
@@ -61,6 +65,22 @@ export default function ApiIntegrationPage() {
       if (sumCfg?.ok && typeof sumCfg?.config?.intervalMinutes === 'number') setTgSummaryMinutes(sumCfg.config.intervalMinutes);
     } catch {
       // ignore
+    }
+  };
+
+  const refreshAudit = async () => {
+    setAuditLoading(true);
+    try {
+      const qs = new URLSearchParams();
+      qs.set('limit', '50');
+      if (auditQ.trim()) qs.set('q', auditQ.trim());
+      const res = await fetch(`/api/system/audit-log?${qs.toString()}`, { cache: 'no-store' });
+      const json = await res.json().catch(() => null);
+      setAuditEntries(Array.isArray(json?.entries) ? json.entries : []);
+    } catch {
+      setAuditEntries([]);
+    } finally {
+      setAuditLoading(false);
     }
   };
 
@@ -144,6 +164,55 @@ export default function ApiIntegrationPage() {
       setMessage(e?.message || 'Summary schedule save failed');
     } finally {
       setTgSummarySaving(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshAudit().catch(() => null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const deintegrate = async () => {
+    const source = String(credInfo?.source || '');
+    if (source === 'env') {
+      setStatus('error');
+      setMessage('Credentials are coming from environment variables. Remove DELTA_API_KEY/DELTA_API_SECRET from the server to de-integrate.');
+      return;
+    }
+
+    const ok = confirm(
+      `This will STOP all bots on ${exchange} and REMOVE Delta API credentials.\n\nAfter this, LIVE orders cannot be placed until you configure API keys again.\n\nProceed?`
+    );
+    if (!ok) return;
+
+    setDeintegrating(true);
+    try {
+      setStatus('unknown');
+      setMessage('Stopping bots + removing credentials…');
+
+      // Stop bots first (best-effort)
+      await fetch('/api/bots/emergency-stop', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ exchange }),
+      }).catch(() => null);
+
+      // Clear stored credentials for this exchange profile
+      const res = await fetch(`/api/delta/credentials?exchange=${encodeURIComponent(exchange)}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => null);
+      if (!json?.ok) throw new Error(json?.error || 'Credential removal failed');
+
+      setApiKey('');
+      setApiSecret('');
+      setConfigured(false);
+      setStatus('ok');
+      setMessage('De-integrated: credentials removed and bots stopped.');
+      await refreshDiagnostics();
+    } catch (e: any) {
+      setStatus('error');
+      setMessage(e?.message || 'De-integration failed');
+    } finally {
+      setDeintegrating(false);
     }
   };
 
@@ -252,6 +321,14 @@ export default function ApiIntegrationPage() {
               <div className="flex items-center gap-2">
                 {status === 'ok' ? <Badge tone="green">Connected</Badge> : status === 'error' ? <Badge tone="red">Error</Badge> : <Badge tone="slate">Checking</Badge>}
                 <Button variant="secondary" onClick={check}>Re-check</Button>
+                <Button
+                  variant="danger"
+                  onClick={deintegrate}
+                  disabled={!configured || deintegrating || String(credInfo?.source || '') === 'env'}
+                  title={String(credInfo?.source || '') === 'env' ? 'Configured via env vars; remove env vars on server to de-integrate.' : undefined}
+                >
+                  {deintegrating ? 'Removing…' : 'Remove API'}
+                </Button>
               </div>
             }
           />
@@ -467,21 +544,68 @@ export default function ApiIntegrationPage() {
           </CardBody>
         </Card>
 
-        <Card>
-          <CardHeader title="Wallet balances" subtitle="From Delta wallet endpoint" />
-          <CardBody className="space-y-2">
-            {wallet.length ? (
-              wallet.slice(0, 8).map((b) => (
-                <div key={b.asset_symbol} className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600">{b.asset_symbol}</span>
-                  <span className="font-semibold text-slate-900">{Number(b.balance).toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
+        <div className="space-y-4 lg:col-span-1">
+          <Card>
+            <CardHeader title="Wallet balances" subtitle="From Delta wallet endpoint" />
+            <CardBody className="max-h-[160px] space-y-1 overflow-auto">
+              {wallet.length ? (
+                wallet.map((b) => (
+                  <div key={b.asset_symbol} className="flex items-center justify-between text-xs">
+                    <span className="text-slate-600">{b.asset_symbol}</span>
+                    <span className="font-semibold text-slate-900">{Number(b.balance).toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-slate-500">No data</div>
+              )}
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader title="Audit log" subtitle="Stops, flatten attempts, leverage results, alerts (latest 50)" />
+            <CardBody className="space-y-3">
+              <div className="flex gap-2">
+                <input
+                  value={auditQ}
+                  onChange={(e) => setAuditQ(e.target.value)}
+                  placeholder="Search (event / message)…"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                />
+                <Button variant="secondary" onClick={() => void refreshAudit()} disabled={auditLoading}>
+                  {auditLoading ? 'Loading…' : 'Refresh'}
+                </Button>
+              </div>
+
+              {auditEntries.length ? (
+                <div className="max-h-[360px] overflow-auto rounded-xl border border-slate-200 bg-white">
+                  <div className="divide-y divide-slate-100">
+                    {auditEntries.map((e, i) => (
+                      <div key={String(e.ts || '') + i} className="px-4 py-3 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="font-semibold text-slate-900">{e.event || 'event'}</div>
+                          <div className="text-xs text-slate-500">{e.ts ? new Date(e.ts).toLocaleString() : '—'}</div>
+                        </div>
+                        <div className="mt-1 text-xs text-slate-600">
+                          {(e.symbol ? `${String(e.symbol).toUpperCase()} · ` : '') +
+                            (e.exchange ? `${e.exchange} · ` : '') +
+                            (e.botId ? `bot ${e.botId}` : '')}
+                        </div>
+                        {e.message ? <div className="mt-1 text-sm text-slate-700">{e.message}</div> : null}
+                        {e.data ? (
+                          <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-slate-50 p-2 text-[11px] text-slate-700">
+                            {JSON.stringify(e.data, null, 2)}
+                          </pre>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-sm text-slate-500">No data</div>
-            )}
-          </CardBody>
-        </Card>
+              ) : (
+                <div className="text-sm text-slate-500">No audit entries yet.</div>
+              )}
+            </CardBody>
+          </Card>
+        </div>
       </div>
     </div>
   );

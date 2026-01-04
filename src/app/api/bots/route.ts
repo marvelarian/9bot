@@ -2,12 +2,14 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { requireAuthedEmail } from '@/lib/server/auth';
-import { createBotForUser, listBots } from '@/lib/server/bots-store';
+import { createBotForUser, listBots, listBotsIncludingDeleted } from '@/lib/server/bots-store';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const email = await requireAuthedEmail();
-    const bots = await listBots(email);
+    const { searchParams } = new URL(req.url);
+    const includeDeleted = searchParams.get('includeDeleted') === '1';
+    const bots = includeDeleted ? await listBotsIncludingDeleted(email) : await listBots(email);
     return NextResponse.json({ ok: true, bots });
   } catch (e: any) {
     const msg = e?.message || 'bots failed';

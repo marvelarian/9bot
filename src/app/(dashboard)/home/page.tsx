@@ -12,6 +12,36 @@ import { Bot, Plus, RefreshCcw } from 'lucide-react';
 
 type TopMover = { symbol: string; last?: number; changePct: number };
 
+function toUpper(s: any) {
+  return String(s || '').trim().toUpperCase();
+}
+
+function toNum(v: any): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function pickPosSymbol(p: any): string {
+  return toUpper(p?.product_symbol ?? p?.symbol ?? p?.product?.symbol ?? p?.productSymbol ?? '');
+}
+
+function pickPosSizeAbs(p: any): number {
+  const sizeRaw =
+    toNum(p?.size) ??
+    toNum(p?.position_size) ??
+    toNum(p?.quantity) ??
+    toNum(p?.net_quantity) ??
+    toNum(p?.net_size) ??
+    toNum(p?.position_qty) ??
+    0;
+  const n = typeof sizeRaw === 'number' ? sizeRaw : 0;
+  return Number.isFinite(n) ? Math.abs(n) : 0;
+}
+
 function fmtDuration(ms: number) {
   if (!Number.isFinite(ms) || ms < 0) return '—';
   const s = Math.floor(ms / 1000);
@@ -286,6 +316,106 @@ export default function DashboardHomePage() {
 
   const runningBots = bots.filter((b) => b.isRunning).length;
 
+  const riskSummary = useMemo(() => {
+    // Aggregate across ALL bots.
+    // - Red: any running bot is at/over max loss OR at/over circuit breaker
+    // - Amber: any bot was stopped by risk recently, or close to max loss/cb, or at max positions
+    // - Green: none of the above
+    const now = Date.now();
+    const riskStopWindowMs = 24 * 60 * 60 * 1000;
+
+    // Build exchange position maps (LIVE only)
+    const unrealBySym: Record<string, number> = {};
+    const openCountBySym: Record<string, number> = {};
+    for (const p of positions as any[]) {
+      const sym = pickPosSymbol(p);
+      if (!sym) continue;
+      const upInr = toNum(p?.unrealized_pnl_inr);
+      if (upInr !== null) unrealBySym[sym] = (unrealBySym[sym] || 0) + upInr;
+      const sz = pickPosSizeAbs(p);
+      if (sz > 0) openCountBySym[sym] = (openCountBySym[sym] || 0) + 1;
+    }
+
+    let stoppedByRisk = 0;
+    let runningAtLoss = 0;
+    let runningNearLoss = 0;
+    let runningAtCb = 0;
+    let runningNearCb = 0;
+    let runningAtMaxPos = 0;
+    let worstRoe: number | null = null;
+
+    for (const b of bots) {
+      const cfg: any = b.config || {};
+      const exec = ((cfg.execution || 'paper') as 'paper' | 'live');
+      const sym = toUpper(cfg.symbol);
+
+      const riskReason = String((b as any)?.runtime?.riskStopReason || '').trim();
+      const riskAt = toNum((b as any)?.runtime?.riskStoppedAt);
+      if (riskReason && riskAt !== null && now - riskAt <= riskStopWindowMs) stoppedByRisk += 1;
+
+      if (!b.isRunning) continue;
+
+      // Loss streak
+      const streak = toNum((b as any)?.runtime?.consecutiveLosses) ?? 0;
+      const maxLoss = Number(cfg.maxConsecutiveLoss) || 0;
+      if (maxLoss > 0) {
+        if (streak >= maxLoss) runningAtLoss += 1;
+        else if (streak >= maxLoss * 0.8) runningNearLoss += 1;
+      }
+
+      // Max positions pressure (LIVE: exchange positions count; PAPER: runtime positions)
+      const maxPos = Number(cfg.maxPositions) || 0;
+      const openCount =
+        exec === 'live'
+          ? (openCountBySym[sym] || 0)
+          : Array.isArray((b as any)?.runtime?.positions)
+            ? ((b as any).runtime.positions as any[]).length
+            : 0;
+      if (maxPos > 0 && openCount >= maxPos) runningAtMaxPos += 1;
+
+      // Circuit breaker proximity (Option A): ROE% based on investment INR and symbol PnL INR.
+      const cb = Number(cfg.circuitBreaker) || 0;
+      const inv = toNum(cfg.investment) ?? toNum((b as any)?.runtime?.startedEquity) ?? null;
+      if (exec === 'live' && cb > 0 && inv !== null && inv > 0 && sym) {
+        const realized = toNum((b as any)?.runtime?.liveStats?.realizedPnl) ?? 0;
+        const unreal = unrealBySym[sym] || 0;
+        const pnl = realized + unreal;
+        const roe = (pnl / inv) * 100;
+        if (Number.isFinite(roe)) {
+          worstRoe = worstRoe === null ? roe : Math.min(worstRoe, roe);
+          if (roe <= -cb) runningAtCb += 1;
+          else if (roe <= -cb * 0.8) runningNearCb += 1;
+        }
+      }
+    }
+
+    let tone: 'green' | 'amber' | 'red' = 'green';
+    let title = 'Healthy';
+    let subtitle = 'No breakers';
+
+    if (runningAtCb > 0 || runningAtLoss > 0) {
+      tone = 'red';
+      title = 'Risk';
+      subtitle = `${runningAtCb ? `${runningAtCb} circuit` : ''}${runningAtCb && runningAtLoss ? ' · ' : ''}${runningAtLoss ? `${runningAtLoss} loss-limit` : ''}`;
+    } else if (stoppedByRisk > 0 || runningNearCb > 0 || runningNearLoss > 0 || runningAtMaxPos > 0) {
+      tone = 'amber';
+      title = 'Warning';
+      subtitle = `${stoppedByRisk ? `${stoppedByRisk} risk-stopped` : ''}${stoppedByRisk && (runningNearCb || runningNearLoss || runningAtMaxPos) ? ' · ' : ''}${
+        runningNearCb ? `${runningNearCb} near-circuit` : ''
+      }${runningNearCb && (runningNearLoss || runningAtMaxPos) ? ' · ' : ''}${runningNearLoss ? `${runningNearLoss} near-loss` : ''}${
+        runningNearLoss && runningAtMaxPos ? ' · ' : ''
+      }${runningAtMaxPos ? `${runningAtMaxPos} at-maxPos` : ''}`;
+    }
+
+    return {
+      tone,
+      title,
+      subtitle,
+      worstRoe,
+      counts: { stoppedByRisk, runningAtLoss, runningNearLoss, runningAtCb, runningNearCb, runningAtMaxPos },
+    };
+  }, [bots, positions]);
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -345,10 +475,16 @@ export default function DashboardHomePage() {
           <CardBody>
             <div className="text-xs text-slate-500">Risk status</div>
             <div className="mt-2 flex items-center gap-2">
-              <Badge tone="green">Healthy</Badge>
-              <span className="text-sm font-semibold text-slate-900">No breakers</span>
+              <Badge tone={riskSummary.tone === 'red' ? 'red' : riskSummary.tone === 'amber' ? 'yellow' : 'green'}>{riskSummary.title}</Badge>
+              <span className="text-sm font-semibold text-slate-900">{riskSummary.subtitle || '—'}</span>
             </div>
-            <div className="mt-2 text-xs text-slate-500">Consecutive loss & max positions enabled</div>
+            <div className="mt-2 text-xs text-slate-500">
+              {riskSummary.worstRoe === null ? (
+                'Based on running bots (loss streak, circuit breaker, max positions).'
+              ) : (
+                <>Worst ROE (running LIVE): {riskSummary.worstRoe.toFixed(2)}%</>
+              )}
+            </div>
           </CardBody>
         </Card>
       </div>
@@ -465,59 +601,80 @@ export default function DashboardHomePage() {
                       </div>
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                      <div className="text-slate-500">Initial</div>
+                      <div className="text-slate-500">Investment</div>
                       <div className="mt-0.5 font-semibold text-slate-900">
                         {(() => {
-                          const lev = Number((b.config as any)?.leverage);
-                          const qty = Number((b.config as any)?.quantity);
-                          const units = lev > 0 ? qty / lev : NaN;
-                          const startP = typeof b.runtime?.startedPrice === 'number' ? b.runtime.startedPrice : undefined;
-                          if (!Number.isFinite(units) || units <= 0 || typeof startP !== 'number' || !Number.isFinite(startP) || startP <= 0) return '—';
-                          const initial = units * startP;
-                          return `$${initial.toLocaleString(undefined, { maximumFractionDigits: 8 })}`;
+                          const inv = toNum((b.config as any)?.investment) ?? toNum((b as any)?.runtime?.startedEquity) ?? null;
+                          if (inv === null || inv <= 0) return '—';
+                          return `INR ${inv.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
                         })()}
                       </div>
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                      <div className="text-slate-500">PnL%</div>
+                      <div className="text-slate-500">ROE%</div>
                       <div className="mt-0.5 font-semibold text-slate-900">
                         {(() => {
-                          const sym = (b.config.symbol || '').trim().toUpperCase();
-                          const ex = ((b.config as any).exchange || 'delta_india') as any;
-                          const curP = botPrices[`${ex}:${sym}`];
-                          const exec = (((b.config as any).execution || 'paper') as 'paper' | 'live');
-                          const lev = Number((b.config as any)?.leverage);
-                          const qty = Number((b.config as any)?.quantity);
-                          const units = lev > 0 ? qty / lev : NaN;
-                          const startP = typeof b.runtime?.startedPrice === 'number' ? b.runtime.startedPrice : undefined;
-                          const hasOpenPosition = Array.isArray((b as any).runtime?.positions) && (b as any).runtime.positions.length > 0;
-                          if (!Number.isFinite(units) || units <= 0 || typeof startP !== 'number' || !Number.isFinite(startP) || startP <= 0) return '—';
-                          const initial = units * startP;
+                          const inv = toNum((b.config as any)?.investment) ?? toNum((b as any)?.runtime?.startedEquity) ?? null;
+                          if (inv === null || inv <= 0) return '—';
 
-                          // PAPER: show realized PnL% (matches Grid Status "Realized PnL" semantics)
-                          if (exec === 'paper') {
-                            const ps = (b as any).runtime?.paperStats;
-                            const realizedPnl = typeof ps?.realizedPnl === 'number' ? ps.realizedPnl : null;
-                            const closedTrades = typeof ps?.closedTrades === 'number' ? ps.closedTrades : 0;
-                            const profitTrades = typeof ps?.profitTrades === 'number' ? ps.profitTrades : 0;
-                            const lossTrades = typeof ps?.lossTrades === 'number' ? ps.lossTrades : 0;
-                            const hasAnyClosed = closedTrades > 0 || profitTrades + lossTrades > 0;
-                            if (!hasAnyClosed || realizedPnl === null) return '—';
-                            const pct = initial > 0 ? (realizedPnl / initial) * 100 : null;
-                            if (pct === null) return '—';
-                            const cls = pct >= 0 ? 'text-emerald-700' : 'text-rose-700';
-                            return <span className={cls} title="Realized P&L from completed trades">{`${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}</span>;
+                          const exec = (((b.config as any).execution || 'paper') as 'paper' | 'live');
+                          const sym = toUpper(b.config.symbol);
+                          const ex = ((b.config as any).exchange || 'delta_india') as any;
+
+                          // Unrealized (LIVE) from Delta positions (account-level), filtered by symbol.
+                          let unrealInr: number | null = null;
+                          if (exec === 'live') {
+                            let sum = 0;
+                            let sawInr = false;
+                            for (const p of positions as any[]) {
+                              const ps = toUpper(p?.product_symbol ?? p?.symbol ?? p?.product?.symbol ?? p?.productSymbol);
+                              if (!ps || ps !== sym) continue;
+                              const upInr = toNum(p?.unrealized_pnl_inr);
+                              if (upInr !== null) {
+                                sum += upInr;
+                                sawInr = true;
+                              } else {
+                                const up = toNum(p?.unrealized_pnl ?? p?.unrealizedPnl);
+                                if (up !== null && !sawInr) sum += up;
+                              }
+                            }
+                            unrealInr = sum;
                           }
 
-                          // LIVE: mark-to-market PnL% once a position exists
-                          if (curP === undefined) return '—';
-                          if (!hasOpenPosition) return '—';
-                          const currentVal = units * curP;
-                          const pnl = (b.config.mode as any) === 'short' ? initial - currentVal : currentVal - initial;
-                          const pct = initial > 0 ? (pnl / initial) * 100 : null;
-                          if (pct === null) return '—';
+                          // Realized (LIVE) from worker liveStats (best-effort). PAPER from paperStats.
+                          const realizedInr =
+                            exec === 'live'
+                              ? (toNum((b as any)?.runtime?.liveStats?.realizedPnl) ?? 0)
+                              : (toNum((b as any)?.runtime?.paperStats?.realizedPnl) ?? 0);
+
+                          // PAPER unrealized (best-effort) from runtime positions + current price when available.
+                          if (exec === 'paper') {
+                            const curP = botPrices[`${ex}:${sym}`];
+                            if (curP === undefined) return '—';
+                            const pos = Array.isArray((b as any).runtime?.positions) ? ((b as any).runtime.positions as any[]) : [];
+                            let unreal = 0;
+                            for (const p of pos) {
+                              const qty = toNum(p?.quantity) ?? 0;
+                              const entry = toNum(p?.entryPrice);
+                              const side = String(p?.side || '').toLowerCase();
+                              if (!qty || entry === null) continue;
+                              unreal += side === 'sell' ? (entry - curP) * qty : (curP - entry) * qty;
+                            }
+                            const pnl = realizedInr + unreal;
+                            const pct = (pnl / inv) * 100;
+                            const cls = pct >= 0 ? 'text-emerald-700' : 'text-rose-700';
+                            return <span className={cls} title="ROE% vs Investment (PAPER)">{`${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}</span>;
+                          }
+
+                          if (unrealInr === null) return '—';
+                          const pnl = realizedInr + unrealInr;
+                          const pct = (pnl / inv) * 100;
                           const cls = pct >= 0 ? 'text-emerald-700' : 'text-rose-700';
-                          return <span className={cls} title="Mark-to-market P&L including unrealized gains/losses">{`${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}</span>;
+                          return (
+                            <span className={cls} title="ROE% vs Investment (INR): realized + unrealized (LIVE)">
+                              {`${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
+                            </span>
+                          );
                         })()}
                       </div>
                     </div>

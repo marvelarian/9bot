@@ -33,7 +33,8 @@ export default function PortfolioPage() {
       const [wRes, pRes, bRes] = await Promise.all([
         fetch('/api/delta/wallet', { cache: 'no-store' }).then((r) => r.json()),
         fetch('/api/delta/positions', { cache: 'no-store' }).then((r) => r.json()),
-        fetch('/api/bots', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ ok: false })),
+        // Portfolio includes deleted bots for performance history.
+        fetch('/api/bots?includeDeleted=1', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ ok: false })),
       ]);
       if (!wRes?.ok) throw new Error(wRes?.error || 'wallet failed');
       if (!pRes?.ok) throw new Error(pRes?.error || 'positions failed');
@@ -104,9 +105,26 @@ export default function PortfolioPage() {
     const rows = (bots || []).map((b) => {
       const exec = (((b.config as any).execution || 'paper') as 'paper' | 'live');
       const sym = String(b.config.symbol || '').toUpperCase();
+      const isDeleted = typeof (b as any).deletedAt === 'number' && Number.isFinite((b as any).deletedAt);
+      const investmentInr = toNum((b.config as any)?.investment) ?? null;
+      const delSnap = (b.runtime as any)?.deletedSnapshot;
+      const deletedPnlInr = isDeleted ? (toNum(delSnap?.pnlInr) ?? null) : null;
+      const deletedRoePct = isDeleted ? (toNum(delSnap?.roePct) ?? null) : null;
       const paper = exec === 'paper' ? (toNum((b.runtime as any)?.paperStats?.realizedPnl) ?? 0) : null;
       const live = exec === 'live' ? (toNum((b.runtime as any)?.liveStats?.realizedPnl) ?? null) : null;
-      return { id: b.id, name: b.name, exec, sym, realized: exec === 'paper' ? paper : live, updatedAt: (b.runtime as any)?.liveStats?.updatedAt ?? b.runtime?.updatedAt };
+      return {
+        id: b.id,
+        name: b.name,
+        exec,
+        sym,
+        isDeleted,
+        investmentInr,
+        // For deleted bots, show frozen per-symbol snapshot PnL (INR).
+        pnlInr: isDeleted ? deletedPnlInr : null,
+        roePct: isDeleted ? deletedRoePct : null,
+        realized: exec === 'paper' ? paper : live,
+        updatedAt: (b.runtime as any)?.liveStats?.updatedAt ?? b.runtime?.updatedAt ?? (b as any)?.deletedAt,
+      };
     });
     // Show running first, then by updatedAt
     return rows.sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
@@ -306,7 +324,11 @@ export default function PortfolioPage() {
                     <th className="px-5 py-3 text-left font-medium">Bot</th>
                     <th className="px-5 py-3 text-left font-medium">Symbol</th>
                     <th className="px-5 py-3 text-left font-medium">Mode</th>
-                    <th className="px-5 py-3 text-right font-medium">Realized PnL</th>
+                    <th className="px-5 py-3 text-left font-medium">Status</th>
+                    <th className="px-5 py-3 text-right font-medium">Investment (INR)</th>
+                    <th className="px-5 py-3 text-right font-medium">PnL (INR)</th>
+                    <th className="px-5 py-3 text-right font-medium">ROE%</th>
+                    <th className="px-5 py-3 text-right font-medium">Realized PnL (live/paper)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -317,6 +339,18 @@ export default function PortfolioPage() {
                       <td className="px-5 py-4">
                         <Badge tone={r.exec === 'live' ? 'red' : 'slate'}>{r.exec.toUpperCase()}</Badge>
                       </td>
+                      <td className="px-5 py-4">
+                        {r.isDeleted ? <Badge tone="slate">Deleted</Badge> : <Badge tone="green">Active</Badge>}
+                      </td>
+                      <td className="px-5 py-4 text-right text-slate-700">
+                        {r.investmentInr === null ? '—' : r.investmentInr.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </td>
+                      <td className={`px-5 py-4 text-right font-semibold ${r.pnlInr !== null && r.pnlInr >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                        {r.pnlInr === null ? '—' : `${r.pnlInr >= 0 ? '+' : ''}${r.pnlInr.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+                      </td>
+                      <td className={`px-5 py-4 text-right font-semibold ${r.roePct !== null && r.roePct >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                        {r.roePct === null ? '—' : `${r.roePct >= 0 ? '+' : ''}${r.roePct.toFixed(2)}%`}
+                      </td>
                       <td className={`px-5 py-4 text-right font-semibold ${r.realized !== null && r.realized >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                         {r.realized === null ? '—' : `${r.realized >= 0 ? '+' : ''}${r.realized.toLocaleString(undefined, { maximumFractionDigits: 8 })}`}
                       </td>
@@ -324,7 +358,7 @@ export default function PortfolioPage() {
                   ))}
                   {botPnlRows.length === 0 ? (
                     <tr>
-                      <td className="px-5 py-10 text-center text-sm text-slate-500" colSpan={4}>
+                      <td className="px-5 py-10 text-center text-sm text-slate-500" colSpan={9}>
                         No bots found.
                       </td>
                     </tr>

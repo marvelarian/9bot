@@ -518,14 +518,14 @@ export default function BotDashboardPage() {
           );
           if (!ok) return;
         }
-        // Capture "initial equity" snapshot for PnL metrics (best-effort).
-        try {
-          const ex = ((bot.config as any).exchange || 'delta_india') as any;
-          const snap = await fetchEquitySnapshot(ex);
-          updateBot(bot.id, { runtime: { startedAt: Date.now(), startedEquity: snap.value, startedCurrency: snap.label } });
-        } catch {
-          // ignore
-        }
+        // Capture per-bot baseline from Investment (INR) for Option A drawdown/PnL.
+        updateBot(bot.id, {
+          runtime: {
+            startedAt: Date.now(),
+            startedEquity: Number((bot.config as any)?.investment) || 0,
+            startedCurrency: 'INR',
+          },
+        });
         await bot.engine.start();
       }
 

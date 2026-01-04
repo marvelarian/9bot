@@ -8,6 +8,8 @@ import { normalizeDeltaOrderSize } from '@/lib/delta-order-sizing';
 import { sendTelegramText } from '@/lib/telegram-send';
 import { appendEquityPoint } from '@/lib/server/equity-history';
 import { getTelegramSummaryConfig, markTelegramSummarySent } from '@/lib/server/telegram-summary-store';
+import { appendAudit } from '@/lib/server/audit-log-store';
+import { canSendTelegramAlert, markTelegramAlertSent } from '@/lib/server/telegram-alerts-throttle-store';
 
 type EngineEntry = {
   engine: GridBotEngine;
@@ -18,6 +20,14 @@ type EngineEntry = {
   // Leverage is an account/product setting on Delta; apply best-effort before placing orders.
   lastOrderLeverageApplied?: number;
   lastOrderLeverageAppliedAt?: number;
+  // Safety: prevent "ghost trading" if the worker loop stops seeing this bot (deleted/stopped/crashed loop).
+  allowTrading?: boolean;
+  lastBotSeenAt?: number;
+  exec?: 'paper' | 'live';
+  exchange?: 'delta_india' | 'delta_global';
+  symbol?: string;
+  baseUrl?: string;
+  lastPriceOkAt?: number;
 };
 
 function fmtPct(p: number): string {
@@ -156,6 +166,72 @@ async function fetchEquitySnapshotServer(params: { exchange: 'delta_india' | 'de
   }
   const label = by.USDC ? 'USDC' : by.USD ? 'USD' : by.INR ? 'INR' : '—';
   return { value: label === '—' ? 0 : by[label], label: label as any };
+}
+
+function pickInr(v: any): number | null {
+  const n = toNum(v);
+  return n === null ? null : n;
+}
+
+async function computeSymbolPnlInr(params: {
+  exchange: 'delta_india' | 'delta_global';
+  baseUrl: string;
+  symbol: string;
+  sinceMs: number | null;
+}): Promise<{ realizedInr: number; unrealizedInr: number; totalInr: number }> {
+  const { auth } = await getDeltaAuth({ exchange: params.exchange });
+  const sym = toUpper(params.symbol);
+
+  // Realized PnL (INR) from fills
+  const qs = new URLSearchParams();
+  qs.set('symbol', sym);
+  qs.set('limit', '1000');
+  if (typeof params.sinceMs === 'number' && Number.isFinite(params.sinceMs)) {
+    qs.set('start_time', String(Math.floor(params.sinceMs / 1000)));
+  }
+  const fillsPath = `/v2/fills?${qs.toString()}`;
+  const fillsRes = await deltaFetch<any>({ method: 'GET', path: fillsPath, auth, baseUrl: params.baseUrl }).catch(() => null);
+  const fills = Array.isArray(fillsRes?.result) ? fillsRes.result : Array.isArray(fillsRes) ? fillsRes : [];
+
+  let realized = 0;
+  let sawInr = false;
+  for (const f of fills as any[]) {
+    const fs = toUpper(f?.product_symbol || f?.symbol || f?.product?.symbol);
+    if (fs && fs !== sym) continue;
+    const rpInr = pickInr(f?.realized_pnl_inr);
+    if (rpInr !== null) {
+      realized += rpInr;
+      sawInr = true;
+      continue;
+    }
+    // Fallback: if INR is not provided, use generic realized pnl (best-effort)
+    const rp = pickRealizedPnl(f);
+    if (rp !== null && !sawInr) realized += rp;
+  }
+
+  // Unrealized PnL (INR) from positions
+  const posRes = await deltaFetch<any>({
+    method: 'GET',
+    path: '/v2/positions/margined',
+    auth,
+    baseUrl: params.baseUrl,
+  }).catch(() => null);
+  const list = Array.isArray(posRes?.result) ? posRes.result : Array.isArray(posRes) ? posRes : [];
+  let unrealized = 0;
+  for (const p of list as any[]) {
+    const ps = toUpper(p?.product_symbol ?? p?.symbol ?? p?.product?.symbol ?? p?.productSymbol);
+    if (!ps || ps !== sym) continue;
+    const upInr = pickInr(p?.unrealized_pnl_inr);
+    if (upInr !== null) {
+      unrealized += upInr;
+      continue;
+    }
+    const up = toNum(p?.unrealized_pnl ?? p?.unrealizedPnl);
+    if (up !== null) unrealized += up;
+  }
+
+  const total = realized + unrealized;
+  return { realizedInr: realized, unrealizedInr: unrealized, totalInr: total };
 }
 
 async function fetchOpenPositionsForSymbol(params: {
@@ -340,6 +416,68 @@ export function startBotWorker() {
     }).catch(() => null);
   };
 
+  const audit = async (row: {
+    level: 'info' | 'warn' | 'error';
+    botId?: string;
+    exchange?: string;
+    symbol?: string;
+    event: string;
+    message?: string;
+    data?: any;
+  }) => {
+    try {
+      await appendAudit({
+        ts: Date.now(),
+        level: row.level,
+        ownerEmail,
+        botId: row.botId,
+        exchange: row.exchange,
+        symbol: row.symbol,
+        event: row.event,
+        message: row.message,
+        data: row.data,
+      });
+    } catch {
+      // ignore
+    }
+  };
+
+  const maybeTelegramAlert = async (params: {
+    botId: string;
+    alertType: string;
+    minIntervalMs: number;
+    text: string;
+    exchange?: string;
+    symbol?: string;
+    auditEvent?: string;
+  }) => {
+    try {
+      const ok = await canSendTelegramAlert({
+        ownerEmail,
+        botId: params.botId,
+        alertType: params.alertType,
+        minIntervalMs: params.minIntervalMs,
+      });
+      if (!ok) return;
+
+      await sendTelegramText(params.text);
+      await markTelegramAlertSent({ ownerEmail, botId: params.botId, alertType: params.alertType });
+
+      if (params.auditEvent) {
+        await audit({
+          level: 'warn',
+          botId: params.botId,
+          exchange: params.exchange,
+          symbol: params.symbol,
+          event: params.auditEvent,
+          message: params.text.replace(/<[^>]+>/g, ''),
+        });
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   const stopAndFlatten = async (
     bot: BotRecord,
     ctx: { exchange: 'delta_india' | 'delta_global'; baseUrl: string; symbol: string },
@@ -353,10 +491,50 @@ export function startBotWorker() {
 
     if (exec === 'live') {
       // LIVE: flatten ALL exchange positions for the bot symbol.
+      await audit({
+        level: 'warn',
+        botId: bot.id,
+        exchange: ctx.exchange,
+        symbol: ctx.symbol,
+        event: 'flatten_start',
+        message: `Flatten start (${reason})`,
+      });
       try {
-        await flattenSymbolAllPositions({ exchange: ctx.exchange, baseUrl: ctx.baseUrl, symbol: ctx.symbol });
-      } catch {
-        // best-effort
+        const r = await flattenSymbolAllPositions({ exchange: ctx.exchange, baseUrl: ctx.baseUrl, symbol: ctx.symbol });
+        await audit({
+          level: 'info',
+          botId: bot.id,
+          exchange: ctx.exchange,
+          symbol: ctx.symbol,
+          event: 'flatten_ok',
+          message: `Flatten ok (closed ${r.closed})`,
+          data: { closed: r.closed, reason },
+        });
+      } catch (e: any) {
+        await audit({
+          level: 'error',
+          botId: bot.id,
+          exchange: ctx.exchange,
+          symbol: ctx.symbol,
+          event: 'flatten_failed',
+          message: `Flatten failed: ${String(e?.message || 'unknown')}`,
+          data: { reason },
+        });
+        await maybeTelegramAlert({
+          botId: bot.id,
+          alertType: 'flatten_failed',
+          minIntervalMs: 15 * 60_000,
+          exchange: ctx.exchange,
+          symbol: ctx.symbol,
+          auditEvent: 'alert_flatten_failed',
+          text: [
+            `<b>9BOT</b> — Flatten failed ⚠️`,
+            `<b>Reason:</b> ${reason}`,
+            `<b>Symbol:</b> ${toUpper(ctx.symbol)}`,
+            `<b>Exchange:</b> ${ctx.exchange === 'delta_global' ? 'Delta Global' : 'Delta India'}`,
+            `<b>Time:</b> ${new Date().toISOString()}`,
+          ].join('\n'),
+        });
       }
       // Stop engine instance if present
       if (entry) {
@@ -367,6 +545,14 @@ export function startBotWorker() {
       }
     } else {
       // PAPER: force-close internal positions at the latest known price so simulated PnL/loss streak update.
+      await audit({
+        level: 'warn',
+        botId: bot.id,
+        exchange: ctx.exchange,
+        symbol: ctx.symbol,
+        event: 'flatten_start',
+        message: `Paper flatten start (${reason})`,
+      });
       if (entry && typeof lastPrice === 'number' && Number.isFinite(lastPrice)) {
         try {
           await entry.engine.forceCloseAllOpenPositions(lastPrice, reason.startsWith('max_consecutive_loss') ? 'max_consecutive_loss' : (reason as any));
@@ -386,9 +572,25 @@ export function startBotWorker() {
         } catch {}
         engines.delete(bot.id);
       }
+      await audit({
+        level: 'info',
+        botId: bot.id,
+        exchange: ctx.exchange,
+        symbol: ctx.symbol,
+        event: 'flatten_ok',
+        message: `Paper flatten ok (${reason})`,
+      });
     }
 
     await stopBotInStore(bot, reason);
+    await audit({
+      level: 'warn',
+      botId: bot.id,
+      exchange: ctx.exchange,
+      symbol: ctx.symbol,
+      event: reason === 'manual_stop' ? 'bot_stop_manual' : 'bot_stop_risk',
+      message: `Bot stopped: ${reason}`,
+    });
 
     // Telegram best-effort
     try {
@@ -429,6 +631,30 @@ export function startBotWorker() {
           return { markPrice: p ?? undefined };
         },
         async placeOrder(req: any) {
+          // Hard safety: if bot is stopped/deleted (or worker loop stalled), do not place orders.
+          const nowMs = Date.now();
+          const seenAt = entry?.lastBotSeenAt ?? 0;
+          const isFresh = typeof seenAt === 'number' && seenAt > 0 && nowMs - seenAt < 5_000;
+          if (entry && entry.allowTrading === false) throw new Error('bot_not_trading');
+          if (entry && !isFresh) {
+            void maybeTelegramAlert({
+              botId: bot.id,
+              alertType: 'worker_stale',
+              minIntervalMs: 15 * 60_000,
+              exchange: ex,
+              symbol: symbol,
+              auditEvent: 'alert_worker_stale',
+              text: [
+                `<b>9BOT</b> — Worker stale ⚠️`,
+                `<b>Bot:</b> ${bot.id}`,
+                `<b>Symbol:</b> ${toUpper(symbol)}`,
+                `<b>Exchange:</b> ${ex === 'delta_global' ? 'Delta Global' : 'Delta India'}`,
+                `<b>Time:</b> ${new Date().toISOString()}`,
+              ].join('\n'),
+            });
+            throw new Error('bot_stale');
+          }
+
           const side = req.side;
           const order_type = req.order_type || 'market';
           const size = Number(req.size);
@@ -500,8 +726,26 @@ export function startBotWorker() {
                 });
                 entry.lastOrderLeverageApplied = desiredLev;
                 entry.lastOrderLeverageAppliedAt = Date.now();
+                await audit({
+                  level: 'info',
+                  botId: bot.id,
+                  exchange: ex,
+                  symbol: sym,
+                  event: 'leverage_set_ok',
+                  message: `Leverage set ok: ${desiredLev}x`,
+                  data: { leverage: desiredLev, productId: product_id },
+                });
               } catch {
                 // ignore: do not block order placement if leverage call fails
+                await audit({
+                  level: 'warn',
+                  botId: bot.id,
+                  exchange: ex,
+                  symbol: sym,
+                  event: 'leverage_set_failed',
+                  message: `Leverage set failed: ${desiredLev}x`,
+                  data: { leverage: desiredLev, productId: product_id },
+                });
               }
             }
           }
@@ -636,7 +880,18 @@ export function startBotWorker() {
         await engine.start();
       } catch {}
 
-      entry = { engine, configHash: nextHash, orders, lastPersistAt: 0 };
+      entry = {
+        engine,
+        configHash: nextHash,
+        orders,
+        lastPersistAt: 0,
+        allowTrading: false,
+        lastBotSeenAt: Date.now(),
+        exec,
+        exchange: ex,
+        symbol,
+        baseUrl,
+      };
       engines.set(bot.id, entry);
       return { entry, baseUrl, symbol };
     }
@@ -656,6 +911,11 @@ export function startBotWorker() {
       entry.configHash = nextHash;
     }
 
+    // Keep latest context on the entry (helps for safety/diagnostics).
+    entry.exec = exec;
+    entry.exchange = ex;
+    entry.symbol = symbol;
+    entry.baseUrl = baseUrl;
     return { entry, baseUrl, symbol };
   };
 
@@ -663,6 +923,23 @@ export function startBotWorker() {
     const bots = await listBots(ownerEmail).catch(() => []);
     const byId = new Map(bots.map((b) => [b.id, b]));
     const running = bots.filter((b) => b.isRunning);
+
+    // Default: freeze trading for all engines. We will re-enable only for bots that are still running this tick.
+    engines.forEach((e) => {
+      e.allowTrading = false;
+    });
+
+    // Cleanup engines that no longer have a bot record (deleted) or are not running.
+    // Do this early so even if later logic throws, engines don't keep running/trading.
+    engines.forEach((entry, id) => {
+      const bot = byId.get(id) || null;
+      if (!bot || bot.isRunning === false) {
+        try {
+          void entry.engine.stop();
+        } catch {}
+        engines.delete(id);
+      }
+    });
 
     // Periodic equity history append (24/7 on EC2)
     const nowAll = Date.now();
@@ -748,9 +1025,9 @@ export function startBotWorker() {
           lines.push(`<b>Time:</b> ${new Date(nowAll).toISOString()}`);
           lines.push('');
 
-          let totalInitial = 0;
-          let totalCurrent = 0;
-          let totalPnl = 0;
+          let totalInvestmentInr = 0;
+          let totalCurrentInr = 0;
+          let totalPnlInr = 0;
           let totalsOk = 0;
 
           const show = bots.slice(0, 25);
@@ -759,33 +1036,72 @@ export function startBotWorker() {
             const ex = ((b.config as any)?.exchange || 'delta_india') as 'delta_india' | 'delta_global';
             const exLabel = ex === 'delta_global' ? 'DG' : 'DI';
             const sym = String(b.config.symbol || '—').toUpperCase();
-            const startP = toNumOrNull((b as any).runtime?.startedPrice);
-            const curP = toNumOrNull((b as any).runtime?.lastPrice);
-            const mult = notionalMultiplierFromBot(b);
 
-            let pnlStr = '—';
-            let initStr = '—';
-            if (mult !== null && startP !== null && startP > 0 && curP !== null && curP > 0) {
-              const initial = mult * startP;
-              const currentVal = mult * curP;
-              const pnl = (b.config.mode as any) === 'short' ? initial - currentVal : currentVal - initial;
-              const pct = initial > 0 ? (pnl / initial) * 100 : null;
-              initStr = `$${initial.toLocaleString(undefined, { maximumFractionDigits: 8 })}`;
-              pnlStr =
-                pct === null ? '—' : `${fmtPct(pct)} ($${pnl.toLocaleString(undefined, { maximumFractionDigits: 8 })})`;
-              totalInitial += initial;
-              totalCurrent += currentVal;
-              totalPnl += pnl;
+            // Match UI: Investment INR baseline + symbol PnL INR => ROE%.
+            const investmentInr = toNum((b.config as any)?.investment) ?? toNum(b.runtime?.startedEquity) ?? 0;
+            const sinceMs = toNum(b.runtime?.startedAt);
+            let pnlInr: number | null = null;
+            let realizedInr: number | null = null;
+            let unrealizedInr: number | null = null;
+
+            if (exec === 'live' && b.isRunning && investmentInr > 0 && sym) {
+              try {
+                const stored = await readDeltaCredentials(ex);
+                const baseUrlFor =
+                  stored?.baseUrl ||
+                  process.env.DELTA_BASE_URL ||
+                  (ex === 'delta_india' ? DELTA_INDIA_BASE_URL : DEFAULT_DELTA_BASE_URL);
+                const s = await computeSymbolPnlInr({ exchange: ex, baseUrl: baseUrlFor, symbol: sym, sinceMs });
+                pnlInr = s.totalInr;
+                realizedInr = s.realizedInr;
+                unrealizedInr = s.unrealizedInr;
+              } catch {
+                // best-effort
+              }
+            } else if (exec === 'paper' && investmentInr > 0) {
+              const realized = toNum((b.runtime as any)?.paperStats?.realizedPnl) ?? 0;
+              const lastP = toNum(b.runtime?.lastPrice);
+              const cv = toNum((b.runtime as any)?.contractValue ?? (b.config as any)?.contractValue) ?? 1;
+              let unreal = 0;
+              const pos = Array.isArray(b.runtime?.positions) ? b.runtime!.positions : [];
+              if (lastP !== null) {
+                for (const p of pos as any[]) {
+                  const pQty = toNum(p?.quantity) ?? 0;
+                  const entry = toNum(p?.entryPrice) ?? null;
+                  const side = String(p?.side || '').toLowerCase();
+                  if (!pQty || entry === null) continue;
+                  const raw = side === 'sell' ? (entry - lastP) * pQty : (lastP - entry) * pQty;
+                  unreal += raw * (cv > 0 ? cv : 1);
+                }
+              }
+              pnlInr = realized + unreal;
+              realizedInr = realized;
+              unrealizedInr = unreal;
+            }
+
+            const roePct = investmentInr > 0 && pnlInr !== null ? (pnlInr / investmentInr) * 100 : null;
+            const currentInr = investmentInr > 0 && pnlInr !== null ? investmentInr + pnlInr : null;
+
+            if (investmentInr > 0 && pnlInr !== null && currentInr !== null && Number.isFinite(roePct ?? NaN)) {
+              totalInvestmentInr += investmentInr;
+              totalCurrentInr += currentInr;
+              totalPnlInr += pnlInr;
               totalsOk += 1;
             }
 
             lines.push(
               [
                 `<b>${sym}</b> · ${exLabel} · ${exec.toUpperCase()} · ${b.isRunning ? 'RUNNING' : 'STOPPED'}`,
-                `Init: ${initStr} · PnL: ${pnlStr}`,
-                `Start: ${startP === null ? '—' : startP.toLocaleString(undefined, { maximumFractionDigits: 8 })} · Now: ${
-                  curP === null ? '—' : curP.toLocaleString(undefined, { maximumFractionDigits: 8 })
-                }`,
+                investmentInr > 0
+                  ? `Investment: INR ${investmentInr.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+                  : 'Investment: —',
+                pnlInr === null
+                  ? `PnL: —`
+                  : `PnL: INR ${pnlInr >= 0 ? '+' : ''}${pnlInr.toLocaleString(undefined, { maximumFractionDigits: 2 })} · ` +
+                    `ROE ${roePct === null ? '—' : fmtPct(roePct)}` +
+                    (realizedInr !== null && unrealizedInr !== null
+                      ? ` (R ${realizedInr >= 0 ? '+' : ''}${realizedInr.toLocaleString(undefined, { maximumFractionDigits: 2 })}, U ${unrealizedInr >= 0 ? '+' : ''}${unrealizedInr.toLocaleString(undefined, { maximumFractionDigits: 2 })})`
+                      : ''),
               ].join('\n')
             );
             lines.push('');
@@ -794,11 +1110,12 @@ export function startBotWorker() {
           if (bots.length > show.length) lines.push(`<i>+ ${bots.length - show.length} more bots not shown</i>`);
 
           if (totalsOk > 0) {
-            const pct = totalInitial > 0 ? (totalPnl / totalInitial) * 100 : null;
+            const pct = totalInvestmentInr > 0 ? (totalPnlInr / totalInvestmentInr) * 100 : null;
             lines.unshift(
-              `<b>Total notional:</b> Init $${totalInitial.toLocaleString(undefined, { maximumFractionDigits: 8 })} · ` +
-                `Now $${totalCurrent.toLocaleString(undefined, { maximumFractionDigits: 8 })} · ` +
-                `PnL ${pct === null ? '—' : fmtPct(pct)} ($${totalPnl.toLocaleString(undefined, { maximumFractionDigits: 8 })})`
+              `<b>Total (INR):</b> Invest ${totalInvestmentInr.toLocaleString(undefined, { maximumFractionDigits: 2 })} · ` +
+                `Now ${totalCurrentInr.toLocaleString(undefined, { maximumFractionDigits: 2 })} · ` +
+                `PnL ${totalPnlInr >= 0 ? '+' : ''}${totalPnlInr.toLocaleString(undefined, { maximumFractionDigits: 2 })} · ` +
+                `ROE ${pct === null ? '—' : fmtPct(pct)}`
             );
             lines.unshift('');
           }
@@ -811,47 +1128,66 @@ export function startBotWorker() {
       }
     }
 
-    // Stop engines for bots no longer running
-    engines.forEach((entry, id) => {
-      if (!running.some((b) => b.id === id)) {
-        const bot = byId.get(id) || null;
-        const wasRunning = lastKnownRunning.get(id) ?? true;
-        // Manual stop transition: close/flatten positions before stopping engine.
-        if (bot && wasRunning && bot.isRunning === false) {
-          const cfg: any = bot.config || {};
-          const ex = ((cfg as any).exchange || 'delta_india') as 'delta_india' | 'delta_global';
-          const sym = toUpper(cfg.symbol);
-          const storedPromise = readDeltaCredentials(ex);
-          void storedPromise.then((stored) => {
-            const baseUrl =
-              stored?.baseUrl ||
-              process.env.DELTA_BASE_URL ||
-              (ex === 'delta_india' ? DELTA_INDIA_BASE_URL : DEFAULT_DELTA_BASE_URL);
-            void stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, 'manual_stop', bot.runtime?.lastPrice ?? null);
-          });
-        }
-        try {
-          void entry.engine.stop();
-        } catch {}
-        engines.delete(id);
-      }
-    });
-
     for (const bot of running) {
       lastKnownRunning.set(bot.id, true);
       const ensured = await ensureEngine(bot);
       if (!ensured) continue;
 
       const { entry, baseUrl, symbol } = ensured;
+      entry.allowTrading = true;
+      entry.lastBotSeenAt = Date.now();
       const now = Date.now();
       if (now - entry.lastPersistAt < 900) continue;
       entry.lastPersistAt = now;
 
       const lastPrice = await fetchDeltaMarkPrice(baseUrl, symbol);
+      if (typeof lastPrice === 'number' && Number.isFinite(lastPrice)) {
+        entry.lastPriceOkAt = now;
+      } else {
+        const lastOk = entry.lastPriceOkAt || 0;
+        if (lastOk > 0 && now - lastOk > 15_000) {
+          void maybeTelegramAlert({
+            botId: bot.id,
+            alertType: 'worker_stale_price',
+            minIntervalMs: 15 * 60_000,
+            exchange: String((bot.config as any)?.exchange || 'delta_india'),
+            symbol: toUpper(symbol),
+            auditEvent: 'alert_worker_stale',
+            text: [
+              `<b>9BOT</b> — Worker stale ⚠️`,
+              `<b>Reason:</b> price feed unavailable`,
+              `<b>Symbol:</b> ${toUpper(symbol)}`,
+              `<b>Time:</b> ${new Date().toISOString()}`,
+            ].join('\n'),
+          });
+        }
+      }
 
       const cfg: any = bot.config || {};
       const ex = ((cfg as any).exchange || 'delta_india') as 'delta_india' | 'delta_global';
       const sym = toUpper(symbol);
+
+      // Alert: max positions hit (engine truth)
+      const maxPos = Number(cfg.maxPositions) || 0;
+      if (maxPos > 0) {
+        const activePos = entry.engine.getStats().activePositions || 0;
+        if (activePos >= maxPos) {
+          void maybeTelegramAlert({
+            botId: bot.id,
+            alertType: 'max_positions_hit',
+            minIntervalMs: 15 * 60_000,
+            exchange: ex,
+            symbol: sym,
+            auditEvent: 'alert_max_positions_hit',
+            text: [
+              `<b>9BOT</b> — Max positions hit ⚠️`,
+              `<b>Symbol:</b> ${sym}`,
+              `<b>Open positions:</b> ${activePos} / ${maxPos}`,
+              `<b>Time:</b> ${new Date().toISOString()}`,
+            ].join('\n'),
+          });
+        }
+      }
 
       // LIVE realized PnL (best-effort) persisted into runtime for Portfolio
       if ((((cfg as any).execution || 'paper') as 'paper' | 'live') === 'live') {
@@ -895,18 +1231,32 @@ export function startBotWorker() {
 
       // Risk 3: circuit breaker (% drawdown from startedEquity) -> stop + flatten
       const cb = Number(cfg.circuitBreaker);
-      const startedEquity = toNum(bot.runtime?.startedEquity);
-      const startedCurrency = String(bot.runtime?.startedCurrency || '').trim();
-      if (Number.isFinite(cb) && cb > 0 && startedEquity !== null && startedEquity > 0) {
+      const investment = toNum((cfg as any)?.investment) ?? toNum(bot.runtime?.startedEquity);
+      if (Number.isFinite(cb) && cb > 0 && investment !== null && investment > 0) {
         try {
-          const snap = await fetchEquitySnapshotServer({ exchange: ex, baseUrl });
-          // Best-effort: compare only if currency matches (if known).
-          if (!startedCurrency || startedCurrency === snap.label) {
-            const ddPct = ((snap.value - startedEquity) / startedEquity) * 100;
-            if (ddPct <= -cb) {
-              await stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, `circuit_breaker_${cb}%`, lastPrice);
-              continue;
-            }
+          // Option A + INR: compare symbol PnL (INR) vs bot investment (INR)
+          const sinceMs = toNum(bot.runtime?.startedAt);
+          const pnl = await computeSymbolPnlInr({ exchange: ex, baseUrl, symbol: sym, sinceMs });
+          const ddPct = (pnl.totalInr / investment) * 100;
+          if (ddPct <= -cb * 0.8 && ddPct > -cb) {
+            void maybeTelegramAlert({
+              botId: bot.id,
+              alertType: 'near_circuit_breaker',
+              minIntervalMs: 15 * 60_000,
+              exchange: ex,
+              symbol: sym,
+              auditEvent: 'alert_near_circuit_breaker',
+              text: [
+                `<b>9BOT</b> — Near circuit breaker ⚠️`,
+                `<b>Symbol:</b> ${sym}`,
+                `<b>DD:</b> ${ddPct.toFixed(2)}% (CB ${cb}%)`,
+                `<b>Time:</b> ${new Date().toISOString()}`,
+              ].join('\n'),
+            });
+          }
+          if (ddPct <= -cb) {
+            await stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, `circuit_breaker_${cb}%`, lastPrice);
+            continue;
           }
         } catch {
           // if equity calc fails, don't stop the bot

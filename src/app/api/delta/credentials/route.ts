@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { deltaFetch } from '@/lib/delta-signing';
 import { readAllDeltaCredentials, readDeltaCredentials, writeDeltaCredentials, type DeltaExchangeId } from '@/lib/delta-credentials-store';
+import { clearDeltaCredentials } from '@/lib/delta-credentials-store';
 import { appendDeltaLog } from '@/lib/server-log';
 
 function maskKey(k: string) {
@@ -115,6 +116,17 @@ export async function POST(req: Request) {
       message: e?.message || 'unknown',
     });
     return Response.json({ ok: false, error: e?.message || 'unknown' }, { status: e?.status || 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const exchange = (searchParams.get('exchange') || undefined) as DeltaExchangeId | undefined;
+    await clearDeltaCredentials(exchange);
+    return Response.json({ ok: true, cleared: exchange || 'all' });
+  } catch (e: any) {
+    return Response.json({ ok: false, error: e?.message || 'unknown' }, { status: 500 });
   }
 }
 

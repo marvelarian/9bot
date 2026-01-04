@@ -194,8 +194,8 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* IMPORTANT:
           - In production we run a server-side worker (EC2) for 24/7 execution.
-          - Keeping the client runner enabled can cause duplicate PAPER orders if multiple tabs are open. */}
-      {process.env.NODE_ENV === 'development' ? <BotRuntimeRunner /> : null}
+          - Keeping the client runner enabled can cause duplicate orders if a server-side worker is also enabled. */}
+      {process.env.NODE_ENV === 'development' && process.env.BOT_WORKER_ENABLED !== 'true' ? <BotRuntimeRunner /> : null}
       <header className="border-b border-slate-200 bg-white/70 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <NavLink href="/home" className="flex items-center gap-3">

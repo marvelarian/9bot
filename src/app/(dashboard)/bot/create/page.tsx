@@ -16,8 +16,11 @@ interface FormData {
   symbol: string;
   lowerRange: number;
   upperRange: number;
+  gridInputMode: 'grids' | 'pct';
+  gridPct: number;
   numberOfGrids: number;
   mode: 'long' | 'short' | 'neutral';
+  investment: number;
   quantity: number;
   leverage: number;
   maxPositions: number;
@@ -128,6 +131,7 @@ function TradingViewChart({ symbol }: { symbol: string }) {
 export default function CreateBotPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [refPrice, setRefPrice] = useState<number | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     exchange: 'delta_india',
@@ -135,8 +139,11 @@ export default function CreateBotPage() {
     symbol: 'BTCUSD',
     lowerRange: 40000,
     upperRange: 50000,
+    gridInputMode: 'grids',
+    gridPct: 0.25,
     numberOfGrids: 10,
     mode: 'long',
+    investment: 300,
     // Qty is LOTS (not contracts). 1 lot = exchange-defined contract size.
     quantity: 1,
     leverage: 1,
@@ -150,20 +157,77 @@ export default function CreateBotPage() {
     // Default exchange is controlled server-side via cookie; keep UI default as delta_india for now.
   }, []);
 
+  useEffect(() => {
+    // Fetch reference price for creation-time spacing% calculation (Option B: required to create).
+    const sym = (formData.symbol || '').trim().toUpperCase();
+    if (!sym) {
+      setRefPrice(null);
+      return;
+    }
+    let alive = true;
+    const run = async () => {
+      try {
+        const ex = formData.exchange;
+        const res = await fetch(
+          `/api/delta/ticker?symbol=${encodeURIComponent(sym)}&exchange=${encodeURIComponent(ex)}`,
+          { cache: 'no-store' }
+        );
+        const json = await res.json().catch(() => null);
+        const t = json?.result ?? {};
+        const p = Number(t.mark_price ?? t.markPrice ?? t.last_price ?? t.lastPrice ?? t.close);
+        if (!alive) return;
+        setRefPrice(Number.isFinite(p) && p > 0 ? p : null);
+      } catch {
+        if (!alive) return;
+        setRefPrice(null);
+      }
+    };
+    void run();
+    const t = setInterval(run, 15_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [formData.symbol, formData.exchange]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      // Option B: require reference price at creation time.
+      if (refPrice === null || !Number.isFinite(refPrice) || refPrice <= 0) {
+        alert('Live price is unavailable right now. Please wait for the ticker price to load, then try again.');
+        return;
+      }
+
       // Validate ranges
       if (formData.lowerRange >= formData.upperRange) {
         alert('Lower range must be less than upper range');
         return;
       }
 
-      if (formData.numberOfGrids < 2) {
-        alert('Number of grids must be at least 2');
+      const rangeAbs = formData.upperRange - formData.lowerRange;
+      if (!Number.isFinite(rangeAbs) || rangeAbs <= 0) {
+        alert('Invalid range. Ensure Upper > Lower.');
         return;
+      }
+
+      const clampGrids = (n: number) => Math.max(2, Math.min(50, Math.floor(n)));
+      let effectiveGrids = clampGrids(formData.numberOfGrids);
+
+      if (formData.gridInputMode === 'pct') {
+        const pct = Number(formData.gridPct);
+        if (!Number.isFinite(pct) || pct <= 0) {
+          alert('Grid % must be greater than 0');
+          return;
+        }
+        const spacingAbsFromPct = (refPrice * pct) / 100;
+        if (!Number.isFinite(spacingAbsFromPct) || spacingAbsFromPct <= 0) {
+          alert('Grid % results in invalid spacing. Try a larger Grid %.');
+          return;
+        }
+        effectiveGrids = clampGrids(Math.floor(rangeAbs / spacingAbsFromPct) + 1);
       }
 
       // Validate quantity based on symbol
@@ -176,12 +240,24 @@ export default function CreateBotPage() {
         return;
       }
 
+      if (!Number.isFinite(formData.investment) || formData.investment <= 0) {
+        alert('Investment (INR) must be greater than 0');
+        return;
+      }
+
+      // Compute spacing based on the effective grids
+      const gridSpacingAbs = rangeAbs / (effectiveGrids - 1);
+      const gridSpacingPctAtCreate = (gridSpacingAbs / refPrice) * 100;
+
       // Create bot configuration
       const config: GridBotConfig = {
         ...formData,
+        numberOfGrids: effectiveGrids,
         // Clamp circuit breaker to a sane percent range (0..100). Large values like 1000% don't make sense.
         circuitBreaker: Math.max(0, Math.min(100, Number(formData.circuitBreaker) || 0)),
-        gridSpacing: (formData.upperRange - formData.lowerRange) / (formData.numberOfGrids - 1)
+        gridSpacing: gridSpacingAbs,
+        refPriceAtCreate: refPrice,
+        gridSpacingPctAtCreate: Number.isFinite(gridSpacingPctAtCreate) ? gridSpacingPctAtCreate : undefined,
       };
 
       if (config.execution === 'live') {
@@ -223,7 +299,27 @@ export default function CreateBotPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const gridSpacing = (formData.upperRange - formData.lowerRange) / (formData.numberOfGrids - 1);
+  const rangeAbs = formData.upperRange - formData.lowerRange;
+  const clampGrids = (n: number) => Math.max(2, Math.min(50, Math.floor(n)));
+  const spacingAbsFromPct =
+    formData.gridInputMode === 'pct' &&
+    refPrice !== null &&
+    Number.isFinite(refPrice) &&
+    refPrice > 0 &&
+    Number.isFinite(formData.gridPct) &&
+    formData.gridPct > 0
+      ? (refPrice * formData.gridPct) / 100
+      : null;
+  const computedGrids =
+    spacingAbsFromPct !== null && Number.isFinite(rangeAbs) && rangeAbs > 0
+      ? clampGrids(Math.floor(rangeAbs / spacingAbsFromPct) + 1)
+      : null;
+  const effectiveGrids = formData.gridInputMode === 'pct' ? (computedGrids ?? clampGrids(formData.numberOfGrids)) : clampGrids(formData.numberOfGrids);
+  const gridSpacing = Number.isFinite(rangeAbs) && rangeAbs > 0 ? rangeAbs / Math.max(1, effectiveGrids - 1) : NaN;
+  const gridSpacingPctAtCreate =
+    refPrice !== null && Number.isFinite(refPrice) && refPrice > 0 && Number.isFinite(gridSpacing)
+      ? (gridSpacing / refPrice) * 100
+      : null;
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -368,27 +464,103 @@ export default function CreateBotPage() {
                 </label>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <label className="text-xs font-medium text-slate-600">
-                  Grids
-                  <input
-                    type="number"
-                    value={formData.numberOfGrids}
-                    onChange={(e) => updateField('numberOfGrids', Number(e.target.value))}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-                    min="2"
-                    max="50"
-                    required
-                  />
-                </label>
-                <label className="text-xs font-medium text-slate-600">
-                  Spacing
-                  <input
-                    value={Number.isFinite(gridSpacing) ? formatPrice(gridSpacing) : '—'}
-                    readOnly
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
-                  />
-                </label>
+              <div className="grid gap-2">
+                <label className="text-xs font-medium text-slate-600">Grid input</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => updateField('gridInputMode', 'grids')}
+                    className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                      formData.gridInputMode === 'grids'
+                        ? 'border-slate-900 bg-slate-900 text-white'
+                        : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
+                    }`}
+                  >
+                    No. of grids
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateField('gridInputMode', 'pct')}
+                    className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                      formData.gridInputMode === 'pct'
+                        ? 'border-slate-900 bg-slate-900 text-white'
+                        : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-50'
+                    }`}
+                  >
+                    Grid %
+                  </button>
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  Uses a reference price captured at creation time (Delta ticker). Create is blocked until price loads.
+                </div>
+              </div>
+
+              {formData.gridInputMode === 'grids' ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="text-xs font-medium text-slate-600">
+                    Grids
+                    <input
+                      type="number"
+                      value={formData.numberOfGrids}
+                      onChange={(e) => updateField('numberOfGrids', Number(e.target.value))}
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                      min="2"
+                      max="50"
+                      required
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-slate-600">
+                    Spacing
+                    <input
+                      value={Number.isFinite(gridSpacing) ? formatPrice(gridSpacing) : '—'}
+                      readOnly
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                    />
+                  </label>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="text-xs font-medium text-slate-600">
+                    Grid % (of price)
+                    <input
+                      type="number"
+                      value={formData.gridPct}
+                      onChange={(e) => updateField('gridPct', Number(e.target.value))}
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                      min="0.0001"
+                      step="0.01"
+                      required
+                    />
+                  </label>
+                  <label className="text-xs font-medium text-slate-600">
+                    Grids (auto)
+                    <input
+                      value={computedGrids === null ? '—' : String(computedGrids)}
+                      readOnly
+                      className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+                    />
+                  </label>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-600">Ref price (creation)</span>
+                  <span className="font-semibold text-slate-900">
+                    {refPrice === null ? '—' : refPrice.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-slate-600">Effective grids</span>
+                  <span className="font-semibold text-slate-900">{effectiveGrids}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-slate-600">Spacing</span>
+                  <span className="font-semibold text-slate-900">
+                    {Number.isFinite(gridSpacing) ? formatPrice(gridSpacing) : '—'}
+                    {gridSpacingPctAtCreate === null ? '' : ` (${gridSpacingPctAtCreate.toFixed(2)}%)`}
+                  </span>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -419,6 +591,22 @@ export default function CreateBotPage() {
                     LIVE: applied on Delta as <code>order leverage</code> for this product (best-effort).
                   </div>
                 </label>
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-xs font-medium text-slate-600">Investment (INR)</label>
+                <input
+                  type="number"
+                  value={formData.investment}
+                  onChange={(e) => updateField('investment', Number(e.target.value))}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                  min="1"
+                  step="1"
+                  required
+                />
+                <div className="text-[11px] text-slate-500">
+                  Baseline capital allocated to this bot (INR). Used for per-bot PnL and Current DD%.
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

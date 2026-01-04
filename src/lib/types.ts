@@ -5,7 +5,15 @@ export interface GridBotConfig {
   lowerRange: number;
   upperRange: number;
   numberOfGrids: number;
+  // Reference price captured at bot creation time (Delta ticker best-effort).
+  // Used to make "grid spacing %" stable and not dependent on the current price later.
+  refPriceAtCreate?: number;
+  // Grid spacing percent at creation time: gridSpacing / refPriceAtCreate * 100
+  gridSpacingPctAtCreate?: number;
   mode: 'long' | 'short' | 'neutral';
+  // Investment baseline for per-bot PnL and drawdown calculations (INR).
+  // Used for Option A: drawdown% = (currentPnLInr / investmentInr) * 100
+  investment: number;
   // Quantity is ALWAYS expressed in "lots" (not Delta contracts).
   // Actual Delta order size (contracts) = quantityLots * lotSize
   quantity: number;

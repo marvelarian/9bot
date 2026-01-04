@@ -37,6 +37,8 @@ export type BotRecord = {
     execution?: 'paper' | 'live';
   };
   isRunning: boolean;
+  // Soft-delete support. Deleted bots are hidden from most pages, but their performance can be shown in Portfolio.
+  deletedAt?: number;
   runtime?: {
     lastPrice?: number;
     updatedAt?: number;
@@ -68,6 +70,18 @@ export type BotRecord = {
       winRate?: number;
       sinceMs?: number;
       updatedAt?: number;
+    };
+    // Frozen performance snapshot captured at delete time (Option A).
+    // Currency is INR (Delta India).
+    deletedSnapshot?: {
+      at: number;
+      currency: 'INR';
+      investmentInr: number;
+      realizedInr: number;
+      unrealizedInr: number;
+      pnlInr: number;
+      roePct: number;
+      currentInr: number;
     };
     levels?: Array<{
       id: string;

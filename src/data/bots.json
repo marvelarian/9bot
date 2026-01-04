@@ -1,6 +1,158 @@
 {
   "bots": [
     {
+      "id": "bot_mjzx0olw_bvb7y6",
+      "ownerEmail": "deathailc@gmail.com",
+      "name": "BTCUSD Grid",
+      "config": {
+        "exchange": "delta_india",
+        "execution": "paper",
+        "symbol": "BTCUSD",
+        "lowerRange": 85000,
+        "upperRange": 100000,
+        "gridInputMode": "pct",
+        "gridPct": 0.9801,
+        "numberOfGrids": 17,
+        "mode": "long",
+        "investment": 295,
+        "quantity": 1,
+        "leverage": 1,
+        "maxPositions": 5,
+        "maxConsecutiveLoss": 3,
+        "circuitBreaker": 10,
+        "gridSpacing": 937.5,
+        "refPriceAtCreate": 91275.35651886,
+        "gridSpacingPctAtCreate": 1.0271118467845004
+      },
+      "isRunning": true,
+      "createdAt": 1767542249876,
+      "updatedAt": 1767550163459,
+      "runtime": {
+        "startedAt": 1767542273605,
+        "startedEquity": 295,
+        "startedCurrency": "INR",
+        "lastPrice": 91246.65978231,
+        "updatedAt": 1767550163456,
+        "startedPrice": 91265.72440045,
+        "paperStartedPrice": 91265.72440045,
+        "positions": [],
+        "orders": [],
+        "paperStats": {
+          "closedTrades": 0,
+          "profitTrades": 0,
+          "lossTrades": 0,
+          "realizedPnl": 0
+        },
+        "levels": [
+          {
+            "id": "grid-0",
+            "price": 85000,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-1",
+            "price": 85937.5,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-2",
+            "price": 86875,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-3",
+            "price": 87812.5,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-4",
+            "price": 88750,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-5",
+            "price": 89687.5,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-6",
+            "price": 90625,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-7",
+            "price": 91562.5,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-8",
+            "price": 92500,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-9",
+            "price": 93437.5,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-10",
+            "price": 94375,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-11",
+            "price": 95312.5,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-12",
+            "price": 96250,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-13",
+            "price": 97187.5,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-14",
+            "price": 98125,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-15",
+            "price": 99062.5,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-16",
+            "price": 100000,
+            "isActive": true,
+            "tradeCount": 0
+          }
+        ],
+        "consecutiveLosses": 0,
+        "lotSize": 1,
+        "contractValue": 0.001
+      }
+    },
+    {
       "id": "bot_mjx96zp2_k1mtye",
       "ownerEmail": "deathailc@gmail.com",
       "name": "ACTUSD Grid",
@@ -21,10 +173,10 @@
       },
       "isRunning": true,
       "createdAt": 1767381301046,
-      "updatedAt": 1767433660417,
+      "updatedAt": 1767550163494,
       "runtime": {
-        "lastPrice": 0.02883438,
-        "updatedAt": 1767433658228,
+        "lastPrice": 0.02914283,
+        "updatedAt": 1767550163491,
         "startedPrice": 0.02907925,
         "paperStartedPrice": 0.02907925,
         "positions": [
@@ -125,7 +277,10 @@
             "tradeCount": 0
           }
         ],
-        "startedAt": 1767381486263
+        "startedAt": 1767381486263,
+        "consecutiveLosses": 0,
+        "lotSize": 1,
+        "contractValue": 10
       }
     },
     {
@@ -2515,6 +2670,26 @@
     }
   ],
   "activity": [
+    {
+      "id": "act_mjzx1765_1mf983",
+      "ts": 1767542273933,
+      "type": "bot.started",
+      "botId": "bot_mjzx0olw_bvb7y6",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mjzx0olx_o70mk4",
+      "ts": 1767542249877,
+      "type": "bot.created",
+      "botId": "bot_mjzx0olw_bvb7y6",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
     {
       "id": "act_mjx9a7bw_p3mrnk",
       "ts": 1767381450908,

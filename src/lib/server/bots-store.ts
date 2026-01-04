@@ -77,7 +77,22 @@ async function pushActivity(db: BotsDb, evt: Omit<ActivityEvent, 'id' | 'ts'> & 
 
 export async function listBots(ownerEmail: string): Promise<BotRecord[]> {
   const db = await readDb();
+  // Default: exclude soft-deleted bots.
+  return (db.bots || []).filter((b) => (b.ownerEmail || '') === ownerEmail && !b.deletedAt);
+}
+
+export async function listBotsIncludingDeleted(ownerEmail: string): Promise<BotRecord[]> {
+  const db = await readDb();
   return (db.bots || []).filter((b) => (b.ownerEmail || '') === ownerEmail);
+}
+
+export async function getBotForUser(ownerEmail: string, id: string, opts?: { includeDeleted?: boolean }): Promise<BotRecord | null> {
+  const db = await readDb();
+  const includeDeleted = opts?.includeDeleted === true;
+  const b = (db.bots || []).find((x) => x.id === id && x.ownerEmail === ownerEmail) || null;
+  if (!b) return null;
+  if (!includeDeleted && b.deletedAt) return null;
+  return b;
 }
 
 export async function listActivity(ownerEmail: string): Promise<ActivityEvent[]> {
@@ -168,14 +183,31 @@ export async function patchBotForUser(
   return next;
 }
 
-export async function deleteBotForUser(ownerEmail: string, id: string): Promise<boolean> {
+export async function archiveBotForUser(
+  ownerEmail: string,
+  id: string,
+  patch?: { runtime?: any; deletedSnapshot?: any }
+): Promise<BotRecord | null> {
   const db = await readDb();
-  const b = (db.bots || []).find((x) => x.id === id && x.ownerEmail === ownerEmail) || null;
-  db.bots = (db.bots || []).filter((x) => !(x.id === id && x.ownerEmail === ownerEmail));
-  if (!b) {
-    await writeDb(db);
-    return false;
-  }
+  const idx = (db.bots || []).findIndex((x) => x.id === id && x.ownerEmail === ownerEmail);
+  if (idx === -1) return null;
+  const b = db.bots[idx]!;
+
+  const nowTs = now();
+  const next: BotRecord = {
+    ...b,
+    isRunning: false,
+    deletedAt: nowTs,
+    runtime:
+      patch?.runtime !== undefined
+        ? {
+            ...(b.runtime || {}),
+            ...(patch.runtime as any),
+          }
+        : b.runtime,
+    updatedAt: nowTs,
+  };
+  db.bots[idx] = next;
 
   await pushActivity(db, {
     type: 'bot.deleted',
@@ -186,7 +218,13 @@ export async function deleteBotForUser(ownerEmail: string, id: string): Promise<
     ownerEmail,
   });
   await writeDb(db);
-  return true;
+  return next;
+}
+
+// Backwards-compatible name: DELETE now performs a soft-delete/archive.
+export async function deleteBotForUser(ownerEmail: string, id: string): Promise<boolean> {
+  const res = await archiveBotForUser(ownerEmail, id);
+  return !!res;
 }
 
 export async function emergencyStopForUser(ownerEmail: string, exchange?: 'delta_india' | 'delta_global') {

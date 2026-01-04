@@ -82,10 +82,14 @@ export default function BotControlPage() {
     }
     if (!b.isRunning) {
       try {
-        const snap = await fetchEquitySnapshot(((b.config as any).exchange || 'delta_india') as any);
         const next = await updateBot(id, {
           isRunning: true,
-          runtime: { startedAt: Date.now(), startedEquity: snap.value, startedCurrency: snap.label },
+          runtime: {
+            startedAt: Date.now(),
+            // Investment baseline (INR) for Option A drawdown/PnL
+            startedEquity: Number((b.config as any)?.investment) || 0,
+            startedCurrency: 'INR',
+          },
         });
         if (!next) {
           const sym = (b.config.symbol || '').trim().toUpperCase();
