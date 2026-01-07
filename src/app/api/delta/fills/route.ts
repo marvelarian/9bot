@@ -10,7 +10,8 @@ export async function GET(req: Request) {
 
     // Delta docs list user fills endpoint under TradeHistory.
     // Many Delta deployments expose GET /v2/fills with filters; we proxy it with optional params.
-    const allowed = ['product_id', 'symbol', 'side', 'limit', 'start_time', 'end_time'];
+    // Delta uses different query keys across deployments; allow both `symbol` and `product_symbol`.
+    const allowed = ['product_id', 'symbol', 'product_symbol', 'side', 'limit', 'start_time', 'end_time'];
     const qs = new URLSearchParams();
     for (const k of allowed) {
       const v = searchParams.get(k);

@@ -5,6 +5,7 @@ import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import type { BotRecord } from '@/lib/bots/types';
+import { convertPnlToInr } from '@/lib/format';
 
 type WalletRow = { asset_symbol: string; balance: string; balance_inr?: string; available_balance?: string; available_balance_inr?: string };
 
@@ -15,6 +16,18 @@ function toNum(v: any): number | null {
     if (Number.isFinite(n)) return n;
   }
   return null;
+}
+
+function formatDuration(ms: number | null): string {
+  if (ms === null || !Number.isFinite(ms) || ms < 0) return '—';
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const hh = String(h).padStart(2, '0');
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+  return `${hh}:${mm}:${ss}`;
 }
 
 export default function PortfolioPage() {
@@ -30,17 +43,54 @@ export default function PortfolioPage() {
     setLoading(true);
     setError(null);
     try {
-      const [wRes, pRes, bRes] = await Promise.all([
+      // IMPORTANT: bots performance should be visible even if Delta APIs fail.
+      // So we load wallet/positions/bots independently and don't wipe bots on Delta errors.
+      const [w, p, b] = await Promise.allSettled([
         fetch('/api/delta/wallet', { cache: 'no-store' }).then((r) => r.json()),
         fetch('/api/delta/positions', { cache: 'no-store' }).then((r) => r.json()),
         // Portfolio includes deleted bots for performance history.
-        fetch('/api/bots?includeDeleted=1', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ ok: false })),
+        fetch('/api/bots?includeDeleted=1', { cache: 'no-store' }).then((r) => r.json()),
       ]);
-      if (!wRes?.ok) throw new Error(wRes?.error || 'wallet failed');
-      if (!pRes?.ok) throw new Error(pRes?.error || 'positions failed');
-      setWallet(Array.isArray(wRes.result) ? wRes.result : []);
-      setPositions(Array.isArray(pRes.result) ? pRes.result : []);
-      setBots(bRes?.ok && Array.isArray(bRes.bots) ? bRes.bots : []);
+
+      const errors: string[] = [];
+
+      // Wallet
+      if (w.status === 'fulfilled' && w.value?.ok) {
+        setWallet(Array.isArray(w.value.result) ? w.value.result : []);
+      } else {
+        const msg =
+          w.status === 'fulfilled'
+            ? (w.value?.error || 'wallet failed')
+            : (w.reason?.message || 'wallet failed');
+        errors.push(`Wallet: ${msg}`);
+        setWallet([]);
+      }
+
+      // Positions
+      if (p.status === 'fulfilled' && p.value?.ok) {
+        setPositions(Array.isArray(p.value.result) ? p.value.result : []);
+      } else {
+        const msg =
+          p.status === 'fulfilled'
+            ? (p.value?.error || 'positions failed')
+            : (p.reason?.message || 'positions failed');
+        errors.push(`Positions: ${msg}`);
+        setPositions([]);
+      }
+
+      // Bots (should still load even if wallet/positions fail)
+      if (b.status === 'fulfilled' && b.value?.ok && Array.isArray(b.value.bots)) {
+        setBots(b.value.bots);
+      } else {
+        const msg =
+          b.status === 'fulfilled'
+            ? (b.value?.error || 'bots failed')
+            : (b.reason?.message || 'bots failed');
+        errors.push(`Bots: ${msg}`);
+        setBots([]);
+      }
+
+      setError(errors.length ? errors.join(' · ') : null);
     } catch (e: any) {
       setError(e?.message || 'portfolio failed');
       setWallet([]);
@@ -101,33 +151,8 @@ export default function PortfolioPage() {
     return { by, inr: hasInr ? inr : null, fallback: { sym, val } };
   }, [wallet]);
 
-  const botPnlRows = useMemo(() => {
-    const rows = (bots || []).map((b) => {
-      const exec = (((b.config as any).execution || 'paper') as 'paper' | 'live');
-      const sym = String(b.config.symbol || '').toUpperCase();
-      const isDeleted = typeof (b as any).deletedAt === 'number' && Number.isFinite((b as any).deletedAt);
-      const investmentInr = toNum((b.config as any)?.investment) ?? null;
-      const delSnap = (b.runtime as any)?.deletedSnapshot;
-      const deletedPnlInr = isDeleted ? (toNum(delSnap?.pnlInr) ?? null) : null;
-      const deletedRoePct = isDeleted ? (toNum(delSnap?.roePct) ?? null) : null;
-      const paper = exec === 'paper' ? (toNum((b.runtime as any)?.paperStats?.realizedPnl) ?? 0) : null;
-      const live = exec === 'live' ? (toNum((b.runtime as any)?.liveStats?.realizedPnl) ?? null) : null;
-      return {
-        id: b.id,
-        name: b.name,
-        exec,
-        sym,
-        isDeleted,
-        investmentInr,
-        // For deleted bots, show frozen per-symbol snapshot PnL (INR).
-        pnlInr: isDeleted ? deletedPnlInr : null,
-        roePct: isDeleted ? deletedRoePct : null,
-        realized: exec === 'paper' ? paper : live,
-        updatedAt: (b.runtime as any)?.liveStats?.updatedAt ?? b.runtime?.updatedAt ?? (b as any)?.deletedAt,
-      };
-    });
-    // Show running first, then by updatedAt
-    return rows.sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+  const deletedBots = useMemo(() => {
+    return bots.filter((b) => b.deletedAt && b.runtime?.deletedSnapshot);
   }, [bots]);
 
   const equitySeries = equity?.series || [];
@@ -315,63 +340,6 @@ export default function PortfolioPage() {
 
       <div className="mt-6">
         <Card>
-          <CardHeader title="Bot realized PnL" subtitle="Per-bot (paper from engine; live best-effort from fills)" />
-          <CardBody className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-xs text-slate-500">
-                  <tr>
-                    <th className="px-5 py-3 text-left font-medium">Bot</th>
-                    <th className="px-5 py-3 text-left font-medium">Symbol</th>
-                    <th className="px-5 py-3 text-left font-medium">Mode</th>
-                    <th className="px-5 py-3 text-left font-medium">Status</th>
-                    <th className="px-5 py-3 text-right font-medium">Investment (INR)</th>
-                    <th className="px-5 py-3 text-right font-medium">PnL (INR)</th>
-                    <th className="px-5 py-3 text-right font-medium">ROE%</th>
-                    <th className="px-5 py-3 text-right font-medium">Realized PnL (live/paper)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {botPnlRows.map((r) => (
-                    <tr key={r.id} className="hover:bg-slate-50/60">
-                      <td className="px-5 py-4 font-semibold text-slate-900">{r.name}</td>
-                      <td className="px-5 py-4 text-slate-700">{r.sym || '—'}</td>
-                      <td className="px-5 py-4">
-                        <Badge tone={r.exec === 'live' ? 'red' : 'slate'}>{r.exec.toUpperCase()}</Badge>
-                      </td>
-                      <td className="px-5 py-4">
-                        {r.isDeleted ? <Badge tone="slate">Deleted</Badge> : <Badge tone="green">Active</Badge>}
-                      </td>
-                      <td className="px-5 py-4 text-right text-slate-700">
-                        {r.investmentInr === null ? '—' : r.investmentInr.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                      </td>
-                      <td className={`px-5 py-4 text-right font-semibold ${r.pnlInr !== null && r.pnlInr >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                        {r.pnlInr === null ? '—' : `${r.pnlInr >= 0 ? '+' : ''}${r.pnlInr.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-                      </td>
-                      <td className={`px-5 py-4 text-right font-semibold ${r.roePct !== null && r.roePct >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                        {r.roePct === null ? '—' : `${r.roePct >= 0 ? '+' : ''}${r.roePct.toFixed(2)}%`}
-                      </td>
-                      <td className={`px-5 py-4 text-right font-semibold ${r.realized !== null && r.realized >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                        {r.realized === null ? '—' : `${r.realized >= 0 ? '+' : ''}${r.realized.toLocaleString(undefined, { maximumFractionDigits: 8 })}`}
-                      </td>
-                    </tr>
-                  ))}
-                  {botPnlRows.length === 0 ? (
-                    <tr>
-                      <td className="px-5 py-10 text-center text-sm text-slate-500" colSpan={9}>
-                        No bots found.
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-          </CardBody>
-        </Card>
-      </div>
-
-      <div className="mt-6">
-        <Card>
           <CardHeader title="Open positions" subtitle="Delta /positions/margined" />
           <CardBody className="p-0">
             <div className="overflow-x-auto">
@@ -390,15 +358,15 @@ export default function PortfolioPage() {
                     const sym = String(p?.product_symbol || p?.symbol || p?.product?.symbol || p?.symbol || '—');
                     const size = toNum(p?.size ?? p?.position_size ?? p?.net_quantity);
                     const entry = toNum(p?.entry_price ?? p?.avg_entry_price ?? p?.average_entry_price);
-                    const upnl = toNum(p?.unrealized_pnl ?? p?.unrealizedPnl);
+                    const upnl = convertPnlToInr(toNum(p?.unrealized_pnl ?? p?.unrealizedPnl));
                     const margin = toNum(p?.position_margin ?? p?.margin);
                     return (
                       <tr key={`${sym}-${idx}`} className="hover:bg-slate-50/60">
                         <td className="px-5 py-4 font-semibold text-slate-900">{sym}</td>
                         <td className="px-5 py-4 text-right text-slate-700">{size === null ? '—' : size.toLocaleString(undefined, { maximumFractionDigits: 8 })}</td>
                         <td className="px-5 py-4 text-right text-slate-700">{entry === null ? '—' : entry.toLocaleString(undefined, { maximumFractionDigits: 8 })}</td>
-                        <td className={`px-5 py-4 text-right font-semibold ${upnl !== null && upnl >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                          {upnl === null ? '—' : `${upnl >= 0 ? '+' : ''}${upnl.toLocaleString(undefined, { maximumFractionDigits: 6 })}`}
+                        <td className={`px-5 py-4 text-right font-semibold ${upnl !== undefined && upnl !== null && upnl >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                          {upnl === undefined || upnl === null ? '—' : `${upnl >= 0 ? '+' : ''}${upnl.toLocaleString(undefined, { maximumFractionDigits: 6 })}`}
                         </td>
                         <td className="px-5 py-4 text-right text-slate-700">{margin === null ? '—' : margin.toLocaleString(undefined, { maximumFractionDigits: 6 })}</td>
                       </tr>
@@ -418,6 +386,73 @@ export default function PortfolioPage() {
           </CardBody>
         </Card>
       </div>
+
+      {/* Bot Performance Section */}
+      {deletedBots.length > 0 && (
+        <div className="mt-6">
+          <Card>
+            <CardHeader title="Bot Performance" subtitle={`Historical performance of ${deletedBots.length} previously deleted bots`} />
+            <CardBody>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {deletedBots.map((bot) => {
+                  const snap = bot.runtime?.deletedSnapshot;
+                  const startTime = bot.runtime?.startedAt;
+                  const endTime = bot.deletedAt;
+                  const durationMs = startTime && endTime ? endTime - startTime : null;
+                  const pnl = snap ? snap.realizedInr + snap.unrealizedInr : 0;
+                  const roe = snap && snap.investmentInr > 0 ? (pnl / snap.investmentInr) * 100 : 0;
+                  const exec = (((bot.config as any).execution || 'paper') as 'paper' | 'live');
+
+                  return (
+                    <div key={bot.id} className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="font-semibold text-slate-900">{bot.config.symbol}</div>
+                        <div className="flex items-center gap-2">
+                          <Badge tone={exec === 'live' ? 'red' : 'slate'}>{exec.toUpperCase()}</Badge>
+                          <Badge tone={bot.config.mode === 'long' ? 'green' : bot.config.mode === 'short' ? 'red' : 'slate'}>
+                            {bot.config.mode}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Started:</span>
+                          <span className="font-medium">{startTime ? new Date(startTime).toLocaleString() : '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Ended:</span>
+                          <span className="font-medium">{endTime ? new Date(endTime).toLocaleString() : '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Duration:</span>
+                          <span className="font-medium">{durationMs ? formatDuration(durationMs) : '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">Investment:</span>
+                          <span className="font-medium">INR {snap?.investmentInr.toLocaleString() ?? '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">PnL:</span>
+                          <span className={`font-semibold ${pnl >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                            {pnl >= 0 ? '+' : ''}INR {pnl.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600">ROE:</span>
+                          <span className={`font-semibold ${roe >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                            {roe >= 0 ? '+' : ''}{roe.toFixed(2)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

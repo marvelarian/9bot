@@ -10,6 +10,7 @@ import { appendEquityPoint } from '@/lib/server/equity-history';
 import { getTelegramSummaryConfig, markTelegramSummarySent } from '@/lib/server/telegram-summary-store';
 import { appendAudit } from '@/lib/server/audit-log-store';
 import { canSendTelegramAlert, markTelegramAlertSent } from '@/lib/server/telegram-alerts-throttle-store';
+import { usdToInr } from '@/lib/format';
 
 type EngineEntry = {
   engine: GridBotEngine;
@@ -93,6 +94,25 @@ function pickRealizedPnl(f: any): number | null {
   );
 }
 
+function pickRealizedPnlInr(f: any): number | null {
+  // If Delta provides INR explicitly, treat it as INR (do NOT convert).
+  return toNum(f?.realized_pnl_inr);
+}
+
+function pickRealizedPnlUsd(f: any): number | null {
+  // Fallback fields are assumed to be USD (Delta commonly uses settlement currency).
+  return (
+    toNum(f?.realized_pnl_usd) ??
+    toNum(f?.realized_pnl_usdc) ??
+    toNum(f?.realized_pnl) ??
+    toNum(f?.realizedPnl) ??
+    toNum(f?.pnl) ??
+    toNum(f?.profit) ??
+    toNum(f?.trade_pnl) ??
+    null
+  );
+}
+
 async function computeLiveRealizedPnl(params: {
   exchange: 'delta_india' | 'delta_global';
   baseUrl: string;
@@ -117,11 +137,20 @@ async function computeLiveRealizedPnl(params: {
   for (const f of list as any[]) {
     const sym = toUpper(f?.product_symbol || f?.symbol || f?.product?.symbol);
     if (sym && sym !== toUpper(params.symbol)) continue;
-    const rp = pickRealizedPnl(f);
-    if (rp === null) continue;
-    realized += rp;
-    if (rp > 0) win += 1;
-    else if (rp < 0) loss += 1;
+    const rpInr = pickRealizedPnlInr(f);
+    if (rpInr !== null) {
+      realized += rpInr;
+      if (rpInr > 0) win += 1;
+      else if (rpInr < 0) loss += 1;
+      continue;
+    }
+
+    const rpUsd = pickRealizedPnlUsd(f);
+    if (rpUsd === null) continue;
+    const v = usdToInr(rpUsd);
+    realized += v;
+    if (v > 0) win += 1;
+    else if (v < 0) loss += 1;
   }
   const denom = win + loss;
   const winRate = denom > 0 ? win / denom : undefined;
@@ -194,19 +223,17 @@ async function computeSymbolPnlInr(params: {
   const fills = Array.isArray(fillsRes?.result) ? fillsRes.result : Array.isArray(fillsRes) ? fillsRes : [];
 
   let realized = 0;
-  let sawInr = false;
   for (const f of fills as any[]) {
     const fs = toUpper(f?.product_symbol || f?.symbol || f?.product?.symbol);
     if (fs && fs !== sym) continue;
     const rpInr = pickInr(f?.realized_pnl_inr);
     if (rpInr !== null) {
       realized += rpInr;
-      sawInr = true;
       continue;
     }
-    // Fallback: if INR is not provided, use generic realized pnl (best-effort)
-    const rp = pickRealizedPnl(f);
-    if (rp !== null && !sawInr) realized += rp;
+    // Fallback: treat generic fields as USD and convert to INR.
+    const rpUsd = pickRealizedPnlUsd(f);
+    if (rpUsd !== null) realized += usdToInr(rpUsd);
   }
 
   // Unrealized PnL (INR) from positions
@@ -226,8 +253,9 @@ async function computeSymbolPnlInr(params: {
       unrealized += upInr;
       continue;
     }
-    const up = toNum(p?.unrealized_pnl ?? p?.unrealizedPnl);
-    if (up !== null) unrealized += up;
+    // Fallback: treat generic fields as USD and convert to INR.
+    const upUsd = toNum(p?.unrealized_pnl ?? p?.unrealizedPnl);
+    if (upUsd !== null) unrealized += usdToInr(upUsd);
   }
 
   const total = realized + unrealized;
@@ -848,6 +876,30 @@ export function startBotWorker() {
         async getWalletBalances() {
           return [];
         },
+        recordEvent(evt: any) {
+          if (!evt || evt.type !== 'skip') return;
+          const id = `skip-${Date.now()}`;
+          try {
+            orders.unshift({
+              id,
+              exchange: ex,
+              execution: exec === 'live' ? 'live' : 'paper',
+              symbol: String(evt.symbol || cfg.symbol || ''),
+              side: (evt.side as any) || 'buy',
+              order_type: 'market',
+              size: 0,
+              price: typeof evt.currentPrice === 'number' ? evt.currentPrice : undefined,
+              triggerLevelPrice: evt.triggerLevelPrice,
+              triggerDirection: evt.triggerDirection,
+              prevPrice: evt.prevPrice,
+              currentPrice: evt.currentPrice,
+              createdAtMs: typeof evt.createdAtMs === 'number' ? evt.createdAtMs : Date.now(),
+              status: 'cancelled',
+              error: `SKIPPED: ${String(evt.reason || 'unknown')}`,
+            } as any);
+            orders.splice(120);
+          } catch {}
+        },
       };
 
       // Derive lot sizing from Delta products (public endpoint; no auth required).
@@ -984,7 +1036,7 @@ export function startBotWorker() {
           const initialCapital = (startPrice !== null && units > 0) ? units * startPrice : 0;
 
           // Add realized P&L
-          const realized = toNum((b.runtime as any)?.paperStats?.realizedPnl) ?? 0;
+          const realized = usdToInr(toNum((b.runtime as any)?.paperStats?.realizedPnl) ?? 0);
 
           // Calculate unrealized P&L from open positions
           let unrealized = 0;
@@ -998,7 +1050,8 @@ export function startBotWorker() {
             unrealized += pnl;
           }
 
-          totalEquity += initialCapital + realized + unrealized;
+          // IMPORTANT: equity should use REALIZED PnL only (unrealized is informational).
+          totalEquity += initialCapital + realized;
         }
         await appendEquityPoint(ownerEmail, { mode: 'paper', label: 'PAPER Equity', value: totalEquity });
         lastEquityAppendAt.set('paper', nowAll);
@@ -1059,7 +1112,7 @@ export function startBotWorker() {
                 // best-effort
               }
             } else if (exec === 'paper' && investmentInr > 0) {
-              const realized = toNum((b.runtime as any)?.paperStats?.realizedPnl) ?? 0;
+              const realized = usdToInr(toNum((b.runtime as any)?.paperStats?.realizedPnl) ?? 0);
               const lastP = toNum(b.runtime?.lastPrice);
               const cv = toNum((b.runtime as any)?.contractValue ?? (b.config as any)?.contractValue) ?? 1;
               let unreal = 0;
@@ -1219,25 +1272,30 @@ export function startBotWorker() {
         }
       }
 
-      // Risk 2: max consecutive loss (loss streak) -> stop + flatten
-      const maxLoss = Number(cfg.maxConsecutiveLoss);
-      if (Number.isFinite(maxLoss) && maxLoss > 0) {
-        const streak = entry.engine.getStats().consecutiveLosses;
-        if (streak >= maxLoss) {
-          await stopAndFlatten(bot, { exchange: ex, baseUrl, symbol: sym }, `max_consecutive_loss_${maxLoss}`, lastPrice);
-          continue;
-        }
-      }
+      // Risk 2: max consecutive loss (loss streak) -> disabled (by strategy design exits are profit-only)
 
       // Risk 3: circuit breaker (% drawdown from startedEquity) -> stop + flatten
       const cb = Number(cfg.circuitBreaker);
       const investment = toNum((cfg as any)?.investment) ?? toNum(bot.runtime?.startedEquity);
       if (Number.isFinite(cb) && cb > 0 && investment !== null && investment > 0) {
         try {
-          // Option A + INR: compare symbol PnL (INR) vs bot investment (INR)
-          const sinceMs = toNum(bot.runtime?.startedAt);
-          const pnl = await computeSymbolPnlInr({ exchange: ex, baseUrl, symbol: sym, sinceMs });
-          const ddPct = (pnl.totalInr / investment) * 100;
+          const execNow = (((cfg as any).execution || 'paper') as 'paper' | 'live');
+          let ddPct: number;
+
+          if (execNow === 'paper') {
+            // PAPER: realized-only PnL comes from engine paper stats (USD) -> convert to INR.
+            const realizedUsd = entry.engine.getPaperTradeStats().realizedPnl;
+            const realizedInr = usdToInr(Number(realizedUsd) || 0);
+            ddPct = (realizedInr / investment) * 100;
+          } else {
+            // LIVE: compare symbol realized PnL (INR) vs bot investment (INR)
+            const sinceMs = toNum(bot.runtime?.startedAt);
+            const pnl = await computeSymbolPnlInr({ exchange: ex, baseUrl, symbol: sym, sinceMs });
+            // IMPORTANT: circuit breaker should use REALIZED PnL only (unrealized is informational).
+            ddPct = (pnl.realizedInr / investment) * 100;
+          }
+
+          if (!Number.isFinite(ddPct)) throw new Error('ddPct_invalid');
           if (ddPct <= -cb * 0.8 && ddPct > -cb) {
             void maybeTelegramAlert({
               botId: bot.id,

@@ -17,9 +17,6 @@ export default function ApiIntegrationPage() {
   const [wallet, setWallet] = useState<Array<{ asset_symbol: string; balance: string }>>([]);
   const [credInfo, setCredInfo] = useState<any>(null);
   const [publicIp, setPublicIp] = useState<{ ipv4: string | null; ipv6: string | null } | null>(null);
-  const [auditEntries, setAuditEntries] = useState<any[]>([]);
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [auditQ, setAuditQ] = useState('');
 
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
@@ -68,21 +65,6 @@ export default function ApiIntegrationPage() {
     }
   };
 
-  const refreshAudit = async () => {
-    setAuditLoading(true);
-    try {
-      const qs = new URLSearchParams();
-      qs.set('limit', '50');
-      if (auditQ.trim()) qs.set('q', auditQ.trim());
-      const res = await fetch(`/api/system/audit-log?${qs.toString()}`, { cache: 'no-store' });
-      const json = await res.json().catch(() => null);
-      setAuditEntries(Array.isArray(json?.entries) ? json.entries : []);
-    } catch {
-      setAuditEntries([]);
-    } finally {
-      setAuditLoading(false);
-    }
-  };
 
   const saveTelegram = async () => {
     setTgSaving(true);
@@ -167,10 +149,7 @@ export default function ApiIntegrationPage() {
     }
   };
 
-  useEffect(() => {
-    void refreshAudit().catch(() => null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Audit log UI removed (not required)
 
   const deintegrate = async () => {
     const source = String(credInfo?.source || '');
@@ -561,50 +540,7 @@ export default function ApiIntegrationPage() {
             </CardBody>
           </Card>
 
-          <Card>
-            <CardHeader title="Audit log" subtitle="Stops, flatten attempts, leverage results, alerts (latest 50)" />
-            <CardBody className="space-y-3">
-              <div className="flex gap-2">
-                <input
-                  value={auditQ}
-                  onChange={(e) => setAuditQ(e.target.value)}
-                  placeholder="Search (event / message)…"
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-                />
-                <Button variant="secondary" onClick={() => void refreshAudit()} disabled={auditLoading}>
-                  {auditLoading ? 'Loading…' : 'Refresh'}
-                </Button>
-              </div>
-
-              {auditEntries.length ? (
-                <div className="max-h-[360px] overflow-auto rounded-xl border border-slate-200 bg-white">
-                  <div className="divide-y divide-slate-100">
-                    {auditEntries.map((e, i) => (
-                      <div key={String(e.ts || '') + i} className="px-4 py-3 text-sm">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="font-semibold text-slate-900">{e.event || 'event'}</div>
-                          <div className="text-xs text-slate-500">{e.ts ? new Date(e.ts).toLocaleString() : '—'}</div>
-                        </div>
-                        <div className="mt-1 text-xs text-slate-600">
-                          {(e.symbol ? `${String(e.symbol).toUpperCase()} · ` : '') +
-                            (e.exchange ? `${e.exchange} · ` : '') +
-                            (e.botId ? `bot ${e.botId}` : '')}
-                        </div>
-                        {e.message ? <div className="mt-1 text-sm text-slate-700">{e.message}</div> : null}
-                        {e.data ? (
-                          <pre className="mt-2 whitespace-pre-wrap rounded-lg bg-slate-50 p-2 text-[11px] text-slate-700">
-                            {JSON.stringify(e.data, null, 2)}
-                          </pre>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="text-sm text-slate-500">No audit entries yet.</div>
-              )}
-            </CardBody>
-          </Card>
+          {/* Audit log removed (not required) */}
         </div>
       </div>
     </div>

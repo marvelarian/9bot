@@ -5,6 +5,7 @@ import type { GridBotConfig } from '@/lib/types';
 import { refreshBots, updateBot, type BotRecord } from '@/lib/bot-store';
 import { GridBotEngine } from '@/lib/grid-bot-engine';
 import type { BotRuntimeOrder, BotRuntimePosition } from '@/lib/bots/types';
+import { convertPnlToInr } from '@/lib/format';
 
 type EngineEntry = {
   engine: GridBotEngine;
@@ -166,6 +167,32 @@ export function BotRuntimeRunner() {
             } catch {}
             return { id: json.id || json?.result?.id || `delta-${Date.now()}` };
           },
+          recordEvent(evt: any) {
+            if (!evt || evt.type !== 'skip') return;
+            const ex = (cfg as any).exchange || 'delta_india';
+            const exec = (cfg as any).execution || 'paper';
+            const id = `skip-${Date.now()}`;
+            try {
+              orders.unshift({
+                id,
+                exchange: ex,
+                execution: exec === 'live' ? 'live' : 'paper',
+                symbol: String(evt.symbol || cfg.symbol || ''),
+                side: (evt.side as any) || 'buy',
+                order_type: 'market',
+                size: 0,
+                price: typeof evt.currentPrice === 'number' ? evt.currentPrice : undefined,
+                triggerLevelPrice: evt.triggerLevelPrice,
+                triggerDirection: evt.triggerDirection,
+                prevPrice: evt.prevPrice,
+                currentPrice: evt.currentPrice,
+                createdAtMs: typeof evt.createdAtMs === 'number' ? evt.createdAtMs : Date.now(),
+                status: 'cancelled',
+                error: `SKIPPED: ${String(evt.reason || 'unknown')}`,
+              } as any);
+              orders.splice(120);
+            } catch {}
+          },
           async cancelOrder(orderId: string) {
             const ex = (cfg as any).exchange || 'delta_india';
             const exec = (cfg as any).execution || 'paper';
@@ -269,6 +296,52 @@ export function BotRuntimeRunner() {
 
               // Drive engine
               void entry.engine.processPriceUpdate(p).catch(() => null);
+
+              // PAPER circuit breaker: realized-only DD% vs investment -> stop + force close.
+              try {
+                const exec = (((rec.config as any).execution || 'paper') as 'paper' | 'live');
+                const cb = Number((rec.config as any).circuitBreaker);
+                const inv = Number((rec.config as any).investment);
+                if (
+                  exec === 'paper' &&
+                  Number.isFinite(cb) &&
+                  cb > 0 &&
+                  Number.isFinite(inv) &&
+                  inv > 0
+                ) {
+                  const ps = entry.engine.getPaperTradeStats();
+                  const realizedInr = convertPnlToInr(ps?.realizedPnl) ?? 0;
+                  const ddPct = (realizedInr / inv) * 100;
+                  if (Number.isFinite(ddPct) && ddPct <= -cb) {
+                    // Force-close all internal paper positions at current price (realizes PnL), then stop the bot.
+                    void (async () => {
+                      try {
+                        await entry.engine.forceCloseAllOpenPositions(p, 'circuit_breaker');
+                      } catch {}
+                      try {
+                        await updateBot(rec.id, {
+                          isRunning: false,
+                          runtime: {
+                            ...(rec.runtime || {}),
+                            riskStopReason: `circuit_breaker_${cb}%`,
+                            riskStoppedAt: Date.now(),
+                            updatedAt: Date.now(),
+                          },
+                        });
+                      } catch {}
+                      try {
+                        entry.stream?.close();
+                      } catch {}
+                      entry.stream = undefined;
+                      try {
+                        await entry.engine.stop();
+                      } catch {}
+                    })();
+                  }
+                }
+              } catch {
+                // ignore
+              }
 
               // Persist runtime snapshot so Grid Status / Home show actual activity
               const last = lastRuntimeWriteRef.current.get(rec.id) || 0;

@@ -2,6 +2,20 @@ import type { GridBotConfig, GridLevel, Position, GridBotStats } from './types';
 
 export interface ExchangeAdapter {
   getTicker(symbol: string): Promise<{ markPrice?: number; close?: number }>;
+  // Optional: record non-order events (e.g. skipped crossings) for UI/debugging.
+  recordEvent?: (evt: {
+    type: 'skip';
+    reason: string;
+    exchange?: 'delta_india' | 'delta_global';
+    execution?: 'paper' | 'live';
+    symbol: string;
+    side?: 'buy' | 'sell';
+    triggerLevelPrice?: number;
+    triggerDirection?: 'above' | 'below';
+    prevPrice?: number;
+    currentPrice?: number;
+    createdAtMs: number;
+  }) => void;
   placeOrder(req: {
     exchange?: 'delta_india' | 'delta_global';
     symbol: string;
@@ -29,6 +43,11 @@ export class GridBotEngine {
   private isRunning = false;
   private priceMonitoringInterval?: ReturnType<typeof setInterval>;
   private lastPrice?: number;
+  // Robustness: when price jumps across multiple levels between ticks, enqueue all crossed levels.
+  // We then process one crossing per tick (even if price stalls), so we never "miss" a level due to gaps.
+  private pendingCrosses: Array<{ levelId: string; dir: 'above' | 'below'; enqueuedAtMs: number; prevPrice: number; currentPrice: number }> =
+    [];
+  private pendingCrossSet: Set<string> = new Set();
   // Paper (simulated) realized stats – computed from entry/exit round-trips.
   private paperClosedTrades = 0;
   private paperProfitTrades = 0;
@@ -103,24 +122,39 @@ export class GridBotEngine {
     this.lastPrice = currentPrice;
     if (typeof prev !== 'number' || !Number.isFinite(prev)) return;
 
-    // IMPORTANT: Only fire ONE level per tick (the first crossed in the move direction).
-    // This matches the user's anti-"place orders on all crossed levels" requirement.
-    const picked = this.findFirstCrossedLevel(prev, currentPrice);
-    if (!picked) return;
-    const { level, dir } = picked;
+    // 1) If price moved, enqueue ALL crossed levels (robust to gaps).
+    if (Number.isFinite(currentPrice) && Number.isFinite(prev) && currentPrice !== prev) {
+      const crossed = this.findCrossedLevels(prev, currentPrice);
+      for (const c of crossed) {
+        const key = `${c.dir}:${c.level.id}`;
+        if (this.pendingCrossSet.has(key)) continue;
+        this.pendingCrossSet.add(key);
+        this.pendingCrosses.push({ levelId: c.level.id, dir: c.dir, enqueuedAtMs: Date.now(), prevPrice: prev, currentPrice });
+      }
+    }
+
+    // 2) Process exactly one crossing per tick.
+    // Even if price stalls (prev === current), we still drain pendingCrosses on subsequent ticks.
+    const next = this.pendingCrosses.shift() || null;
+    if (!next) return;
+    this.pendingCrossSet.delete(`${next.dir}:${next.levelId}`);
+    const level = this.levels.find((l) => l.id === next.levelId) || null;
+    if (!level) return;
     try {
-      await this.processLevelCross(level, dir, currentPrice, prev);
+      // Use the ORIGINAL movement that produced this crossing (important for gap moves).
+      // If we use the latest tick prices, we can incorrectly apply guards (and effectively "miss" levels).
+      await this.processLevelCross(level, next.dir, next.currentPrice, next.prevPrice);
     } catch {
       // keep engine running even if an order fails (e.g. live mode blocked by IP whitelist)
     }
   }
 
-  private findFirstCrossedLevel(
+  private findCrossedLevels(
     prevPrice: number,
     currentPrice: number
-  ): { level: GridLevel; dir: 'above' | 'below' } | null {
-    if (!Number.isFinite(prevPrice) || !Number.isFinite(currentPrice)) return null;
-    if (prevPrice === currentPrice) return null;
+  ): Array<{ level: GridLevel; dir: 'above' | 'below' }> {
+    if (!Number.isFinite(prevPrice) || !Number.isFinite(currentPrice)) return [];
+    if (prevPrice === currentPrice) return [];
 
     const movingUp = currentPrice > prevPrice;
 
@@ -140,9 +174,8 @@ export class GridBotEngine {
       })
       .sort((a, b) => (movingUp ? a.price - b.price : b.price - a.price));
 
-    const first = crossed[0];
-    if (!first) return null;
-    return { level: first, dir: movingUp ? 'above' : 'below' };
+    const dir = movingUp ? 'above' : 'below';
+    return crossed.map((level) => ({ level, dir }));
   }
 
   private async processLevelCross(
@@ -151,7 +184,8 @@ export class GridBotEngine {
     currentPrice: number,
     prevPrice: number
   ): Promise<void> {
-    if (this.consecutiveLosses >= this.config.maxConsecutiveLoss) return;
+    // NOTE: maxConsecutiveLoss risk feature disabled.
+    // Grid exits are designed to be profitable by level design; we keep unrealized/realized tracking elsewhere.
 
     // Determine the "last inactive grid level" price.
     // Engine invariant: after a successful order, exactly one level is inactive (the one that fired).
@@ -215,7 +249,23 @@ export class GridBotEngine {
       return false;
     };
 
-    if (!shouldPlace()) return;
+    if (!shouldPlace()) {
+      this.exchange.recordEvent?.({
+        type: 'skip',
+        reason: 'should_place_false',
+        exchange: (this.config as any).exchange,
+        execution: (this.config as any).execution,
+        symbol: this.config.symbol,
+        triggerLevelPrice: level.price,
+        triggerDirection: crossed,
+        prevPrice,
+        currentPrice,
+        createdAtMs: Date.now(),
+      });
+      // Mark as crossed in this direction so we don't retry forever on the same stale crossing.
+      level.lastCrossed = crossed;
+      return;
+    }
 
     // Determine side for this mode + crossing (only one side per tick).
     let side: 'buy' | 'sell' | null = null;

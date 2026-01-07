@@ -117,20 +117,17 @@ async function computeSymbolPnlInrFromDelta(params: {
   const fills = Array.isArray(fillsRes?.result) ? fillsRes.result : Array.isArray(fillsRes) ? fillsRes : [];
 
   let realized = 0;
-  let sawInr = false;
   for (const f of fills as any[]) {
     const fs = toUpper(f?.product_symbol || f?.symbol || f?.product?.symbol);
     if (fs && fs !== sym) continue;
     const rpInr = toNum(f?.realized_pnl_inr);
     if (rpInr !== null) {
       realized += rpInr;
-      sawInr = true;
       continue;
     }
-    if (!sawInr) {
-      const rp = toNum(f?.realized_pnl ?? f?.realizedPnl ?? f?.pnl ?? f?.profit ?? f?.trade_pnl);
-      if (rp !== null) realized += rp;
-    }
+    // Fallback: treat generic fields as USD and convert to INR (1 USD = 85 INR).
+    const rpUsd = toNum(f?.realized_pnl_usd ?? f?.realized_pnl_usdc ?? f?.realized_pnl ?? f?.realizedPnl ?? f?.pnl ?? f?.profit ?? f?.trade_pnl);
+    if (rpUsd !== null) realized += rpUsd * 85;
   }
 
   // Positions: unrealized INR (prefer unrealized_pnl_inr if present)
@@ -146,8 +143,9 @@ async function computeSymbolPnlInrFromDelta(params: {
       unrealized += upInr;
       continue;
     }
-    const up = toNum(p?.unrealized_pnl ?? p?.unrealizedPnl);
-    if (up !== null) unrealized += up;
+    // Fallback: treat generic fields as USD and convert to INR (1 USD = 85 INR).
+    const upUsd = toNum(p?.unrealized_pnl ?? p?.unrealizedPnl);
+    if (upUsd !== null) unrealized += upUsd * 85;
   }
 
   const pnl = realized + unrealized;
@@ -240,7 +238,8 @@ export async function DELETE(_req: Request, ctx: { params: { id: string } }) {
       // best-effort snapshot
     }
 
-    const pnlInr = snap.pnlInr;
+    // IMPORTANT: use REALIZED PnL only for equity/ROE snapshot (unrealized is informational).
+    const pnlInr = snap.realizedInr;
     const roePct = investmentInr > 0 ? (pnlInr / investmentInr) * 100 : 0;
     const now = Date.now();
 

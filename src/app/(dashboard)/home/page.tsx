@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Sparkline } from '@/components/charts/Sparkline';
 import { getBots, refreshBots, updateBot, type BotRecord } from '@/lib/bot-store';
-import { formatPrice } from '@/lib/format';
+import { formatPrice, convertPnlToInr } from '@/lib/format';
 import { Bot, Plus, RefreshCcw } from 'lucide-react';
 
 type TopMover = { symbol: string; last?: number; changePct: number };
@@ -337,8 +337,6 @@ export default function DashboardHomePage() {
     }
 
     let stoppedByRisk = 0;
-    let runningAtLoss = 0;
-    let runningNearLoss = 0;
     let runningAtCb = 0;
     let runningNearCb = 0;
     let runningAtMaxPos = 0;
@@ -355,13 +353,7 @@ export default function DashboardHomePage() {
 
       if (!b.isRunning) continue;
 
-      // Loss streak
-      const streak = toNum((b as any)?.runtime?.consecutiveLosses) ?? 0;
-      const maxLoss = Number(cfg.maxConsecutiveLoss) || 0;
-      if (maxLoss > 0) {
-        if (streak >= maxLoss) runningAtLoss += 1;
-        else if (streak >= maxLoss * 0.8) runningNearLoss += 1;
-      }
+      // Loss streak risk disabled (strategy exits are profit-only)
 
       // Max positions pressure (LIVE: exchange positions count; PAPER: runtime positions)
       const maxPos = Number(cfg.maxPositions) || 0;
@@ -393,18 +385,16 @@ export default function DashboardHomePage() {
     let title = 'Healthy';
     let subtitle = 'No breakers';
 
-    if (runningAtCb > 0 || runningAtLoss > 0) {
+    if (runningAtCb > 0) {
       tone = 'red';
       title = 'Risk';
-      subtitle = `${runningAtCb ? `${runningAtCb} circuit` : ''}${runningAtCb && runningAtLoss ? ' · ' : ''}${runningAtLoss ? `${runningAtLoss} loss-limit` : ''}`;
-    } else if (stoppedByRisk > 0 || runningNearCb > 0 || runningNearLoss > 0 || runningAtMaxPos > 0) {
+      subtitle = `${runningAtCb ? `${runningAtCb} circuit` : ''}`;
+    } else if (stoppedByRisk > 0 || runningNearCb > 0 || runningAtMaxPos > 0) {
       tone = 'amber';
       title = 'Warning';
-      subtitle = `${stoppedByRisk ? `${stoppedByRisk} risk-stopped` : ''}${stoppedByRisk && (runningNearCb || runningNearLoss || runningAtMaxPos) ? ' · ' : ''}${
+      subtitle = `${stoppedByRisk ? `${stoppedByRisk} risk-stopped` : ''}${stoppedByRisk && (runningNearCb || runningAtMaxPos) ? ' · ' : ''}${
         runningNearCb ? `${runningNearCb} near-circuit` : ''
-      }${runningNearCb && (runningNearLoss || runningAtMaxPos) ? ' · ' : ''}${runningNearLoss ? `${runningNearLoss} near-loss` : ''}${
-        runningNearLoss && runningAtMaxPos ? ' · ' : ''
-      }${runningAtMaxPos ? `${runningAtMaxPos} at-maxPos` : ''}`;
+      }${runningNearCb && runningAtMaxPos ? ' · ' : ''}${runningAtMaxPos ? `${runningAtMaxPos} at-maxPos` : ''}`;
     }
 
     return {
@@ -412,7 +402,7 @@ export default function DashboardHomePage() {
       title,
       subtitle,
       worstRoe,
-      counts: { stoppedByRisk, runningAtLoss, runningNearLoss, runningAtCb, runningNearCb, runningAtMaxPos },
+      counts: { stoppedByRisk, runningAtCb, runningNearCb, runningAtMaxPos },
     };
   }, [bots, positions]);
 
@@ -635,17 +625,18 @@ export default function DashboardHomePage() {
                                 sawInr = true;
                               } else {
                                 const up = toNum(p?.unrealized_pnl ?? p?.unrealizedPnl);
-                                if (up !== null && !sawInr) sum += up;
+                                if (up !== null && !sawInr) sum += convertPnlToInr(up) ?? 0;
                               }
                             }
                             unrealInr = sum;
                           }
 
                           // Realized (LIVE) from worker liveStats (best-effort). PAPER from paperStats.
-                          const realizedInr =
+                          const realizedRaw =
                             exec === 'live'
                               ? (toNum((b as any)?.runtime?.liveStats?.realizedPnl) ?? 0)
                               : (toNum((b as any)?.runtime?.paperStats?.realizedPnl) ?? 0);
+                          const realizedInr = convertPnlToInr(realizedRaw) ?? 0;
 
                           // PAPER unrealized (best-effort) from runtime positions + current price when available.
                           if (exec === 'paper') {
@@ -660,18 +651,18 @@ export default function DashboardHomePage() {
                               if (!qty || entry === null) continue;
                               unreal += side === 'sell' ? (entry - curP) * qty : (curP - entry) * qty;
                             }
-                            const pnl = realizedInr + unreal;
-                            const pct = (pnl / inv) * 100;
+                            // IMPORTANT: use REALIZED PnL only for equity/ROE baseline. Unrealized is informational.
+                            const pct = (realizedInr / inv) * 100;
                             const cls = pct >= 0 ? 'text-emerald-700' : 'text-rose-700';
                             return <span className={cls} title="ROE% vs Investment (PAPER)">{`${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}</span>;
                           }
 
                           if (unrealInr === null) return '—';
-                          const pnl = realizedInr + unrealInr;
-                          const pct = (pnl / inv) * 100;
+                          // IMPORTANT: use REALIZED PnL only for equity/ROE baseline. Unrealized is informational.
+                          const pct = (realizedInr / inv) * 100;
                           const cls = pct >= 0 ? 'text-emerald-700' : 'text-rose-700';
                           return (
-                            <span className={cls} title="ROE% vs Investment (INR): realized + unrealized (LIVE)">
+                            <span className={cls} title="ROE% vs Investment (INR): realized only (LIVE)">
                               {`${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`}
                             </span>
                           );

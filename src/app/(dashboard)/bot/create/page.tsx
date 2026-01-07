@@ -24,7 +24,6 @@ interface FormData {
   quantity: number;
   leverage: number;
   maxPositions: number;
-  maxConsecutiveLoss: number;
   circuitBreaker: number;
 }
 
@@ -148,7 +147,6 @@ export default function CreateBotPage() {
     quantity: 1,
     leverage: 1,
     maxPositions: 5,
-    maxConsecutiveLoss: 3,
     // Circuit breaker is % drawdown from started equity. Example: 5 means stop at -5%.
     circuitBreaker: 10,
   });
@@ -262,7 +260,6 @@ export default function CreateBotPage() {
         quantity: formData.quantity,
         leverage: formData.leverage,
         maxPositions: formData.maxPositions,
-        maxConsecutiveLoss: formData.maxConsecutiveLoss,
         circuitBreaker: Math.max(0, Math.min(100, Number(formData.circuitBreaker) || 0)),
         gridSpacing: gridSpacingAbs,
         refPriceAtCreate: refPrice,
@@ -628,18 +625,6 @@ export default function CreateBotPage() {
                     className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
                     min="1"
                     max="20"
-                    required
-                  />
-                </label>
-                <label className="text-xs font-medium text-slate-600">
-                  Max losses
-                  <input
-                    type="number"
-                    value={formData.maxConsecutiveLoss}
-                    onChange={(e) => updateField('maxConsecutiveLoss', Number(e.target.value))}
-                    className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
-                    min="1"
-                    max="10"
                     required
                   />
                 </label>

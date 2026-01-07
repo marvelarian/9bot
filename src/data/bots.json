@@ -1,6 +1,494 @@
 {
   "bots": [
     {
+      "id": "bot_mk42mvxr_6wo0yk",
+      "ownerEmail": "deathailc@gmail.com",
+      "name": "BTCUSD Grid",
+      "config": {
+        "exchange": "delta_india",
+        "execution": "paper",
+        "symbol": "BTCUSD",
+        "lowerRange": 90000,
+        "upperRange": 100000,
+        "numberOfGrids": 50,
+        "mode": "long",
+        "investment": 300,
+        "quantity": 1,
+        "leverage": 100,
+        "maxPositions": 5,
+        "circuitBreaker": 10,
+        "gridSpacing": 204.08163265306123,
+        "refPriceAtCreate": 92130.92226482,
+        "gridSpacingPctAtCreate": 0.2215126340171126
+      },
+      "isRunning": true,
+      "createdAt": 1767793548591,
+      "updatedAt": 1767794264616,
+      "runtime": {
+        "startedAt": 1767793568868,
+        "startedEquity": 300,
+        "startedCurrency": "INR",
+        "lastPrice": 92031.30945931,
+        "updatedAt": 1767794244176,
+        "startedPrice": 92054.63292017,
+        "paperStartedPrice": 92054.63292017,
+        "positions": [
+          {
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "quantity": 1,
+            "entryPrice": 92039.66872151,
+            "orderId": "mock-1767793664250",
+            "leverage": 100,
+            "timestampMs": 1767793664252
+          }
+        ],
+        "orders": [
+          {
+            "id": "mock-1767793664250",
+            "exchange": "delta_india",
+            "execution": "paper",
+            "symbol": "BTCUSD",
+            "side": "buy",
+            "order_type": "market",
+            "size": 1,
+            "price": 92039.66872151,
+            "triggerLevelPrice": 92040.81632653,
+            "triggerDirection": "below",
+            "prevPrice": 92045.37500067,
+            "currentPrice": 92039.66872151,
+            "createdAtMs": 1767793664250,
+            "status": "filled"
+          }
+        ],
+        "paperStats": {
+          "closedTrades": 0,
+          "profitTrades": 0,
+          "lossTrades": 0,
+          "realizedPnl": 0
+        },
+        "levels": [
+          {
+            "id": "grid-0",
+            "price": 90000,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-1",
+            "price": 90204.08163265,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-2",
+            "price": 90408.16326531,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-3",
+            "price": 90612.24489796,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-4",
+            "price": 90816.32653061,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-5",
+            "price": 91020.40816327,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-6",
+            "price": 91224.48979592,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-7",
+            "price": 91428.57142857,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-8",
+            "price": 91632.65306122,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-9",
+            "price": 91836.73469388,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-10",
+            "price": 92040.81632653,
+            "isActive": false,
+            "lastCrossed": "below",
+            "tradeCount": 1
+          },
+          {
+            "id": "grid-11",
+            "price": 92244.89795918,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-12",
+            "price": 92448.97959184,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-13",
+            "price": 92653.06122449,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-14",
+            "price": 92857.14285714,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-15",
+            "price": 93061.2244898,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-16",
+            "price": 93265.30612245,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-17",
+            "price": 93469.3877551,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-18",
+            "price": 93673.46938776,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-19",
+            "price": 93877.55102041,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-20",
+            "price": 94081.63265306,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-21",
+            "price": 94285.71428571,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-22",
+            "price": 94489.79591837,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-23",
+            "price": 94693.87755102,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-24",
+            "price": 94897.95918367,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-25",
+            "price": 95102.04081633,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-26",
+            "price": 95306.12244898,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-27",
+            "price": 95510.20408163,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-28",
+            "price": 95714.28571429,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-29",
+            "price": 95918.36734694,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-30",
+            "price": 96122.44897959,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-31",
+            "price": 96326.53061224,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-32",
+            "price": 96530.6122449,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-33",
+            "price": 96734.69387755,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-34",
+            "price": 96938.7755102,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-35",
+            "price": 97142.85714286,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-36",
+            "price": 97346.93877551,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-37",
+            "price": 97551.02040816,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-38",
+            "price": 97755.10204082,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-39",
+            "price": 97959.18367347,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-40",
+            "price": 98163.26530612,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-41",
+            "price": 98367.34693878,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-42",
+            "price": 98571.42857143,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-43",
+            "price": 98775.51020408,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-44",
+            "price": 98979.59183673,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-45",
+            "price": 99183.67346939,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-46",
+            "price": 99387.75510204,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-47",
+            "price": 99591.83673469,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-48",
+            "price": 99795.91836735,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-49",
+            "price": 100000,
+            "isActive": true,
+            "tradeCount": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "bot_mk1gbp9w_4bhm63",
+      "ownerEmail": "deathailc@gmail.com",
+      "name": "BTCUSD Grid",
+      "config": {
+        "exchange": "delta_india",
+        "execution": "paper",
+        "symbol": "BTCUSD",
+        "lowerRange": 85000,
+        "upperRange": 100000,
+        "numberOfGrids": 10,
+        "mode": "long",
+        "investment": 300,
+        "quantity": 1,
+        "leverage": 1,
+        "maxPositions": 5,
+        "maxConsecutiveLoss": 3,
+        "circuitBreaker": 10,
+        "gridSpacing": 1666.6666666666667,
+        "refPriceAtCreate": 93830.91426304,
+        "gridSpacingPctAtCreate": 1.776244726758638
+      },
+      "isRunning": false,
+      "createdAt": 1767635142837,
+      "updatedAt": 1767635214751,
+      "runtime": {
+        "startedAt": 1767635162529,
+        "startedEquity": 300,
+        "startedCurrency": "INR",
+        "lastPrice": 93827.07597709,
+        "updatedAt": 1767635209061,
+        "startedPrice": 93840.93627834,
+        "paperStartedPrice": 93840.93627834,
+        "positions": [],
+        "orders": [],
+        "paperStats": {
+          "closedTrades": 0,
+          "profitTrades": 0,
+          "lossTrades": 0,
+          "realizedPnl": 0
+        },
+        "levels": [
+          {
+            "id": "grid-0",
+            "price": 85000,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-1",
+            "price": 86666.66666667,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-2",
+            "price": 88333.33333333,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-3",
+            "price": 90000,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-4",
+            "price": 91666.66666667,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-5",
+            "price": 93333.33333333,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-6",
+            "price": 95000,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-7",
+            "price": 96666.66666667,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-8",
+            "price": 98333.33333333,
+            "isActive": true,
+            "tradeCount": 0
+          },
+          {
+            "id": "grid-9",
+            "price": 100000,
+            "isActive": true,
+            "tradeCount": 0
+          }
+        ],
+        "deletedSnapshot": {
+          "at": 1767635214267,
+          "currency": "INR",
+          "investmentInr": 300,
+          "realizedInr": 0,
+          "unrealizedInr": 0,
+          "pnlInr": 0,
+          "roePct": 0,
+          "currentInr": 300
+        }
+      },
+      "deletedAt": 1767635214272
+    },
+    {
       "id": "bot_mjzx0olw_bvb7y6",
       "ownerEmail": "deathailc@gmail.com",
       "name": "BTCUSD Grid",
@@ -24,15 +512,15 @@
         "refPriceAtCreate": 91275.35651886,
         "gridSpacingPctAtCreate": 1.0271118467845004
       },
-      "isRunning": true,
+      "isRunning": false,
       "createdAt": 1767542249876,
-      "updatedAt": 1767553961178,
+      "updatedAt": 1767634442382,
       "runtime": {
         "startedAt": 1767542273605,
         "startedEquity": 295,
         "startedCurrency": "INR",
-        "lastPrice": 90982.59082484,
-        "updatedAt": 1767553961172,
+        "lastPrice": 93371.02689389,
+        "updatedAt": 1767634159675,
         "startedPrice": 91265.72440045,
         "paperStartedPrice": 91265.72440045,
         "positions": [],
@@ -149,8 +637,19 @@
         ],
         "consecutiveLosses": 0,
         "lotSize": 1,
-        "contractValue": 0.001
-      }
+        "contractValue": 0.001,
+        "deletedSnapshot": {
+          "at": 1767634442373,
+          "currency": "INR",
+          "investmentInr": 295,
+          "realizedInr": 0,
+          "unrealizedInr": 0,
+          "pnlInr": 0,
+          "roePct": 0,
+          "currentInr": 295
+        }
+      },
+      "deletedAt": 1767634442382
     },
     {
       "id": "bot_mjx96zp2_k1mtye",
@@ -171,12 +670,12 @@
         "circuitBreaker": 10,
         "gridSpacing": 0.0022222222222222222
       },
-      "isRunning": true,
+      "isRunning": false,
       "createdAt": 1767381301046,
-      "updatedAt": 1767553961541,
+      "updatedAt": 1767634447560,
       "runtime": {
-        "lastPrice": 0.02841828,
-        "updatedAt": 1767553961539,
+        "lastPrice": 0.02687644,
+        "updatedAt": 1767634159676,
         "startedPrice": 0.02907925,
         "paperStartedPrice": 0.02907925,
         "positions": [
@@ -280,8 +779,19 @@
         "startedAt": 1767381486263,
         "consecutiveLosses": 0,
         "lotSize": 1,
-        "contractValue": 10
-      }
+        "contractValue": 10,
+        "deletedSnapshot": {
+          "at": 1767634447552,
+          "currency": "INR",
+          "investmentInr": 0,
+          "realizedInr": 0,
+          "unrealizedInr": 0,
+          "pnlInr": 0,
+          "roePct": 0,
+          "currentInr": 0
+        }
+      },
+      "deletedAt": 1767634447560
     },
     {
       "id": "bot_mjvsu71y_h178px",
@@ -304,7 +814,7 @@
       },
       "isRunning": false,
       "createdAt": 1767293364023,
-      "updatedAt": 1767381197220,
+      "updatedAt": 1767634456221,
       "runtime": {
         "lastPrice": 1.45585187,
         "updatedAt": 1767381194353,
@@ -380,8 +890,19 @@
             "tradeCount": 0
           }
         ],
-        "startedAt": 1767294057871
-      }
+        "startedAt": 1767294057871,
+        "deletedSnapshot": {
+          "at": 1767634456214,
+          "currency": "INR",
+          "investmentInr": 0,
+          "realizedInr": 0,
+          "unrealizedInr": 0,
+          "pnlInr": 0,
+          "roePct": 0,
+          "currentInr": 0
+        }
+      },
+      "deletedAt": 1767634456221
     },
     {
       "id": "bot_mjpy5awl_miwi4w",
@@ -404,7 +925,7 @@
       },
       "isRunning": false,
       "createdAt": 1766939483254,
-      "updatedAt": 1767381197220,
+      "updatedAt": 1767634459235,
       "runtime": {
         "startedAt": 1766939542916,
         "startedEquity": 0.95,
@@ -791,8 +1312,19 @@
             "isActive": true,
             "tradeCount": 0
           }
-        ]
-      }
+        ],
+        "deletedSnapshot": {
+          "at": 1767634459227,
+          "currency": "INR",
+          "investmentInr": 0,
+          "realizedInr": 0,
+          "unrealizedInr": 0,
+          "pnlInr": 0,
+          "roePct": 0,
+          "currentInr": 0
+        }
+      },
+      "deletedAt": 1767634459235
     },
     {
       "id": "bot_mjpu7g45_23pvpl",
@@ -815,7 +1347,7 @@
       },
       "isRunning": false,
       "createdAt": 1766932864853,
-      "updatedAt": 1767381198221,
+      "updatedAt": 1767634740628,
       "runtime": {
         "startedAt": 1766939081252,
         "startedEquity": 0.95,
@@ -1614,7 +2146,7 @@
       },
       "isRunning": false,
       "createdAt": 1766921575749,
-      "updatedAt": 1767381197220,
+      "updatedAt": 1767634467007,
       "runtime": {
         "startedAt": 1766939086045,
         "startedEquity": 0.95,
@@ -1953,8 +2485,19 @@
           "lossTrades": 0,
           "winRate": 1,
           "realizedPnl": 0.0042695000000002314
+        },
+        "deletedSnapshot": {
+          "at": 1767634466997,
+          "currency": "INR",
+          "investmentInr": 0,
+          "realizedInr": 0,
+          "unrealizedInr": 0,
+          "pnlInr": 0,
+          "roePct": 0,
+          "currentInr": 0
         }
-      }
+      },
+      "deletedAt": 1767634467007
     },
     {
       "id": "bot_mjpmuv72_42me5a",
@@ -1977,7 +2520,7 @@
       },
       "isRunning": false,
       "createdAt": 1766920520558,
-      "updatedAt": 1767381197220,
+      "updatedAt": 1767634496792,
       "runtime": {
         "startedAt": 1766939088487,
         "startedEquity": 0.95,
@@ -2665,11 +3208,149 @@
           "lossTrades": 1,
           "winRate": 0.75,
           "realizedPnl": 771.1604010800074
+        },
+        "deletedSnapshot": {
+          "at": 1767634496784,
+          "currency": "INR",
+          "investmentInr": 0,
+          "realizedInr": 0,
+          "unrealizedInr": 0,
+          "pnlInr": 0,
+          "roePct": 0,
+          "currentInr": 0
         }
-      }
+      },
+      "deletedAt": 1767634496792
     }
   ],
   "activity": [
+    {
+      "id": "act_mk42ncxh_41tc95",
+      "ts": 1767793570613,
+      "type": "bot.started",
+      "botId": "bot_mk42mvxr_6wo0yk",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mk42mvxr_6le08p",
+      "ts": 1767793548591,
+      "type": "bot.created",
+      "botId": "bot_mk42mvxr_6wo0yk",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mk1gd8e8_2obvbq",
+      "ts": 1767635214272,
+      "type": "bot.deleted",
+      "botId": "bot_mk1gbp9w_4bhm63",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mk1gd72n_bpvcp0",
+      "ts": 1767635212559,
+      "type": "bot.stopped",
+      "botId": "bot_mk1gbp9w_4bhm63",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mk1gc5u2_ed6avq",
+      "ts": 1767635164298,
+      "type": "bot.started",
+      "botId": "bot_mk1gbp9w_4bhm63",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mk1gbp9x_6wla7m",
+      "ts": 1767635142837,
+      "type": "bot.created",
+      "botId": "bot_mk1gbp9w_4bhm63",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mk1fxus8_j03tsm",
+      "ts": 1767634496792,
+      "type": "bot.deleted",
+      "botId": "bot_mjpmuv72_42me5a",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mk1fx7sv_1kl1pb",
+      "ts": 1767634467007,
+      "type": "bot.deleted",
+      "botId": "bot_mjpnhhdx_2xgr5c",
+      "symbol": "HIVEUSD",
+      "name": "HIVEUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mk1fx1sz_tpbcwz",
+      "ts": 1767634459235,
+      "type": "bot.deleted",
+      "botId": "bot_mjpy5awl_miwi4w",
+      "symbol": "HANAUSD",
+      "name": "HANAUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mk1fwzh9_6dgesy",
+      "ts": 1767634456221,
+      "type": "bot.deleted",
+      "botId": "bot_mjvsu71y_h178px",
+      "symbol": "FILUSD",
+      "name": "FILUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mk1fwsso_nn4kyx",
+      "ts": 1767634447560,
+      "type": "bot.deleted",
+      "botId": "bot_mjx96zp2_k1mtye",
+      "symbol": "ACTUSD",
+      "name": "ACTUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mk1fwosu_iw2nkc",
+      "ts": 1767634442382,
+      "type": "bot.deleted",
+      "botId": "bot_mjzx0olw_bvb7y6",
+      "symbol": "BTCUSD",
+      "name": "BTCUSD Grid",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "act_mk1fqn41_gstfxf",
+      "ts": 1767634160257,
+      "type": "bots.emergency_stop",
+      "exchange": "delta_india",
+      "ownerEmail": "deathailc@gmail.com"
+    },
     {
       "id": "act_mjzx1765_1mf983",
       "ts": 1767542273933,
@@ -2973,6 +3654,117 @@
       "name": "BTCUSD Grid",
       "exchange": "delta_india",
       "ownerEmail": "deathailc@gmail.com"
+    },
+    {
+      "id": "bot_deleted_sample_001",
+      "ownerEmail": "deathailc@gmail.com",
+      "name": "ETHUSD Grid (Deleted)",
+      "config": {
+        "exchange": "delta_india",
+        "execution": "live",
+        "symbol": "ETHUSD",
+        "lowerRange": 3000,
+        "upperRange": 3500,
+        "gridInputMode": "grids",
+        "numberOfGrids": 10,
+        "mode": "long",
+        "investment": 500,
+        "quantity": 1,
+        "leverage": 1,
+        "maxPositions": 3,
+        "maxConsecutiveLoss": 2,
+        "circuitBreaker": 5,
+        "gridSpacing": 50,
+        "refPriceAtCreate": 3200,
+        "gridSpacingPctAtCreate": 1.5625
+      },
+      "isRunning": false,
+      "deletedAt": 1767540000000,
+      "createdAt": 1767000000000,
+      "updatedAt": 1767540000000,
+      "runtime": {
+        "startedAt": 1767000000000,
+        "startedEquity": 500,
+        "startedCurrency": "INR",
+        "lastPrice": 3350,
+        "updatedAt": 1767540000000,
+        "startedPrice": 3200,
+        "paperStartedPrice": 3200,
+        "positions": [],
+        "orders": [],
+        "paperStats": {
+          "closedTrades": 5,
+          "profitTrades": 3,
+          "lossTrades": 2,
+          "realizedPnl": 75.5
+        },
+        "deletedSnapshot": {
+          "at": 1767540000000,
+          "currency": "INR",
+          "investmentInr": 500,
+          "realizedInr": 125.75,
+          "unrealizedInr": 25.25,
+          "pnlInr": 151,
+          "roePct": 30.2,
+          "currentInr": 651
+        }
+      }
+    },
+    {
+      "id": "bot_deleted_sample_002",
+      "ownerEmail": "deathailc@gmail.com",
+      "name": "ADAUSD Grid (Deleted)",
+      "config": {
+        "exchange": "delta_global",
+        "execution": "paper",
+        "symbol": "ADAUSD",
+        "lowerRange": 0.45,
+        "upperRange": 0.55,
+        "gridInputMode": "pct",
+        "gridPct": 2,
+        "numberOfGrids": 8,
+        "mode": "short",
+        "investment": 300,
+        "quantity": 100,
+        "leverage": 2,
+        "maxPositions": 4,
+        "maxConsecutiveLoss": 3,
+        "circuitBreaker": 8,
+        "gridSpacing": 0.0125,
+        "refPriceAtCreate": 0.5,
+        "gridSpacingPctAtCreate": 2.5
+      },
+      "isRunning": false,
+      "deletedAt": 1767500000000,
+      "createdAt": 1766900000000,
+      "updatedAt": 1767500000000,
+      "runtime": {
+        "startedAt": 1766900000000,
+        "startedEquity": 300,
+        "startedCurrency": "INR",
+        "lastPrice": 0.48,
+        "updatedAt": 1767500000000,
+        "startedPrice": 0.5,
+        "paperStartedPrice": 0.5,
+        "positions": [],
+        "orders": [],
+        "paperStats": {
+          "closedTrades": 12,
+          "profitTrades": 7,
+          "lossTrades": 5,
+          "realizedPnl": -45.2
+        },
+        "deletedSnapshot": {
+          "at": 1767500000000,
+          "currency": "INR",
+          "investmentInr": 300,
+          "realizedInr": -45.2,
+          "unrealizedInr": -12.8,
+          "pnlInr": -58,
+          "roePct": -19.33,
+          "currentInr": 242
+        }
+      }
     }
   ]
 }

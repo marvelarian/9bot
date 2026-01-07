@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { convertPnlToInr } from '@/lib/format';
 
 type UiPositionRow = {
   key: string;
@@ -55,7 +56,8 @@ function pickEntryPrice(p: any): number | undefined {
 }
 
 function pickPnl(p: any): number | undefined {
-  return toNum(p?.unrealized_pnl) ?? toNum(p?.pnl) ?? toNum(p?.unrealizedPnl) ?? toNum(p?.pnl_unrealized);
+  const pnlValue = toNum(p?.unrealized_pnl) ?? toNum(p?.pnl) ?? toNum(p?.unrealizedPnl) ?? toNum(p?.pnl_unrealized);
+  return convertPnlToInr(pnlValue);
 }
 
 function pickSideAndQty(p: any): { side: 'buy' | 'sell'; qty: number } | null {

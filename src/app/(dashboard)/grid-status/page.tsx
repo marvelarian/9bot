@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import type { GridLevel } from '@/lib/types';
 import { deleteBot, getBots, refreshBots, updateBot, type BotRecord } from '@/lib/bot-store';
 import { fetchEquitySnapshot } from '@/lib/equity';
-import { formatPrice } from '@/lib/format';
+import { formatPrice, convertPnlToInr } from '@/lib/format';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -39,6 +39,20 @@ function parseTsMs(v: any): number | undefined {
     if (Number.isFinite(ms)) return ms;
   }
   return undefined;
+}
+
+function normSym(s: any): string {
+  return String(s || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
+}
+
+function symMatches(a: any, b: any): boolean {
+  const x = normSym(a);
+  const y = normSym(b);
+  if (!x || !y) return false;
+  return x === y || x.startsWith(y) || y.startsWith(x);
 }
 
 function formatDuration(ms: number | null): string {
@@ -235,9 +249,11 @@ export default function GridStatusPage() {
     Number.isFinite(investmentInrRaw) && investmentInrRaw > 0
       ? investmentInrRaw
       : (typeof bot?.runtime?.startedEquity === 'number' && Number.isFinite(bot.runtime.startedEquity) ? bot.runtime.startedEquity : 0);
+  // IMPORTANT: use REALIZED PnL only for equity / drawdown calculations.
+  // Unrealized PnL is displayed separately as informational.
   const realizedInr = typeof fillsStats?.realizedPnl === 'number' && Number.isFinite(fillsStats.realizedPnl) ? fillsStats.realizedPnl : 0;
   const unrealizedInr = typeof symbolUnrealizedInr === 'number' && Number.isFinite(symbolUnrealizedInr) ? symbolUnrealizedInr : 0;
-  const pnlInr = exec === 'live' ? realizedInr + unrealizedInr : 0;
+  const pnlInr = exec === 'live' ? realizedInr : 0;
   const ddPct = investmentInr > 0 ? (pnlInr / investmentInr) * 100 : null;
 
   const mostTraded = useMemo(() => {
@@ -307,7 +323,9 @@ export default function GridStatusPage() {
         const qs = new URLSearchParams();
         qs.set('exchange', String(ex));
         qs.set('symbol', symbol);
-        qs.set('limit', '200');
+        qs.set('product_symbol', symbol);
+        qs.set('limit', '1000');
+        if (startedAt) qs.set('start_time', String(Math.floor(startedAt / 1000)));
         const res = await fetch(`/api/delta/fills?${qs.toString()}`, { cache: 'no-store' });
         const json = await res.json();
         if (!json?.ok) throw new Error(json?.error || 'fills failed');
@@ -327,7 +345,7 @@ export default function GridStatusPage() {
 
         for (const f of list) {
           const sym = String(f?.product_symbol || f?.symbol || f?.product?.symbol || '').trim().toUpperCase();
-          if (sym && sym !== symbol) continue;
+          if (sym && !symMatches(sym, symbol)) continue;
           const t = parseTsMs(f?.created_at ?? f?.createdAt ?? f?.timestamp ?? f?.time);
           if (startedAt && t && t < startedAt) continue;
           const side = pickSide(f);
@@ -405,7 +423,7 @@ export default function GridStatusPage() {
         let sells = 0;
         for (const p of list as any[]) {
           const ps = String(p?.product_symbol ?? p?.symbol ?? p?.product?.symbol ?? '').trim().toUpperCase();
-          if (!ps || ps !== sym) continue;
+          if (!ps || !symMatches(ps, sym)) continue;
           const sz = pickPosSizeAbs(p);
           if (sz > 0) {
             count += 1;
@@ -415,7 +433,7 @@ export default function GridStatusPage() {
           }
           const upInr = toNum(p?.unrealized_pnl_inr ?? p?.unrealizedPnlInr);
           const upFallback = toNum(p?.unrealized_pnl ?? p?.unrealizedPnl);
-          const up = upInr !== undefined ? upInr : upFallback;
+          const up = upInr !== undefined ? upInr : (upFallback !== undefined ? convertPnlToInr(upFallback) : undefined);
           if (typeof up === 'number' && Number.isFinite(up)) sum += up;
         }
         if (!alive) return;
@@ -576,25 +594,16 @@ export default function GridStatusPage() {
               <span>·</span>
               <span><strong>Max positions:</strong> {cfg.maxPositions}</span>
               <span>·</span>
-              <span><strong>Consecutive loss:</strong> {cfg.maxConsecutiveLoss}</span>
-              <span>·</span>
               <span><strong>Circuit breaker:</strong> {cfg.circuitBreaker}</span>
             </div>
-            <div className="mt-3 grid gap-2 md:grid-cols-3">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
-                <div className="text-slate-500">Loss streak</div>
-                <div className="mt-1 font-semibold text-slate-900">
-                  {typeof bot.runtime?.consecutiveLosses === 'number' ? bot.runtime.consecutiveLosses : 0} / {cfg.maxConsecutiveLoss}
-                </div>
-                <div className="mt-1 text-[11px] text-slate-500">Counts consecutive losing closures (resets on a winning close).</div>
-              </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
                 <div className="text-slate-500">Circuit breaker</div>
                 <div className="mt-1 font-semibold text-slate-900">
                   {Number(cfg.circuitBreaker) > 0 ? `${cfg.circuitBreaker}%` : 'Off'}
                 </div>
                 <div className="mt-1 text-[11px] text-slate-500">
-                  Triggers on % drawdown from started equity (LIVE worker).
+                  Triggers on % drawdown from started equity (REALIZED PnL only). Works for LIVE + PAPER.
                   {Number(cfg.circuitBreaker) > 100 ? ' (This value is unusually high; recommended 0–100.)' : ''}
                 </div>
                 <div className="mt-2 text-[11px] text-slate-600">
@@ -613,7 +622,10 @@ export default function GridStatusPage() {
                       · INR {(investmentInr + pnlInr).toLocaleString(undefined, { maximumFractionDigits: 2 })} /{' '}
                       {investmentInr.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                       {' '}
-                      · PnL INR {pnlInr.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      · Realized PnL INR {pnlInr.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      {typeof unrealizedInr === 'number' && Number.isFinite(unrealizedInr) ? (
+                        <span> · Unrealized INR {unrealizedInr.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+                      ) : null}
                     </span>
                   ) : null}
                 </div>
@@ -784,7 +796,7 @@ export default function GridStatusPage() {
                         {selectedLevel.isActive ? <Badge tone="green">Active</Badge> : <Badge tone="red">Inactive</Badge>}
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-500">Trades</span>
+                        <span className="text-slate-500">{exec === 'live' ? 'Signals' : 'Trades'}</span>
                         <span className="font-semibold text-slate-900">{selectedLevel.tradeCount || 0}</span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -812,14 +824,16 @@ export default function GridStatusPage() {
                     <div className="mt-1 text-lg font-semibold text-slate-900">{inactiveLevels.length}</div>
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="text-slate-500">Trades</div>
-                    <div className="mt-1 text-lg font-semibold text-slate-900">{totalLevelTrades}</div>
+                    <div className="text-slate-500">{exec === 'live' ? 'Fills' : 'Trades'}</div>
+                    <div className="mt-1 text-lg font-semibold text-slate-900">
+                      {exec === 'live' ? (fillsStats?.total ?? 0) : totalLevelTrades}
+                    </div>
                   </div>
                 </div>
 
                 <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <div className="text-slate-500">Most traded level</div>
+                    <div className="text-slate-500">{exec === 'live' ? 'Most triggered level' : 'Most traded level'}</div>
                     <div className="mt-1 font-semibold text-slate-900">
                       {mostTraded ? `$${formatPrice(mostTraded.price)} · ${mostTraded.tradeCount || 0}` : '—'}
                     </div>
@@ -1055,7 +1069,7 @@ export default function GridStatusPage() {
                         <div className="font-semibold text-slate-900">
                           {fillsStats.realizedPnl === undefined
                             ? '—'
-                            : fillsStats.realizedPnl.toLocaleString(undefined, { maximumFractionDigits: 8 })}
+                            : (convertPnlToInr(fillsStats.realizedPnl) ?? 0).toLocaleString(undefined, { maximumFractionDigits: 8 })}
                         </div>
                       </div>
                     </div>

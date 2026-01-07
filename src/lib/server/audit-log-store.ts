@@ -31,6 +31,12 @@ export type AuditRow = {
 
 const FILE = 'audit-log.jsonl';
 
+function auditEnabled(): boolean {
+  const v = String(process.env.AUDIT_LOG_ENABLED || '').trim().toLowerCase();
+  // Default: disabled (user requested removal). Enable explicitly via AUDIT_LOG_ENABLED=true.
+  return v === 'true' || v === '1' || v === 'yes';
+}
+
 async function ensureDir() {
   // file-store ensures dir for JSON helpers, but we’re writing manually
   const full = resolveDataPath(FILE);
@@ -39,6 +45,7 @@ async function ensureDir() {
 }
 
 export async function appendAudit(row: AuditRow): Promise<void> {
+  if (!auditEnabled()) return;
   await ensureDir();
   const full = resolveDataPath(FILE);
   const line = JSON.stringify(row) + '\n';
@@ -46,6 +53,7 @@ export async function appendAudit(row: AuditRow): Promise<void> {
 }
 
 export async function readAuditRaw(): Promise<string> {
+  if (!auditEnabled()) return '';
   const full = resolveDataPath(FILE);
   try {
     return await fs.readFile(full, 'utf8');

@@ -22,7 +22,8 @@ export interface GridBotConfig {
   contractValue?: number; // contract_value, defaults to 1
   leverage: number;
   maxPositions: number;
-  maxConsecutiveLoss: number;
+  // Deprecated: exits are designed to be profit-only; loss-streak risk is disabled.
+  maxConsecutiveLoss?: number;
   gridSpacing?: number;
   circuitBreaker: number;
 }
